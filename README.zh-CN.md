@@ -136,6 +136,7 @@ go test ./...
 
 - [SqlKata](https://github.com/sqlkata/querybuilder)(MIT 协议):本项目灵感来源与移植基准的 C# 查询构建器。其能力面、fluent 风格与各方言编译语义是 sqlk 遵循的基线。
 - [goqu](https://github.com/doug-martin/goqu)(MIT 协议):老牌 Go SQL 构建器。sqlk 刻意保留 SqlKata 的 fluent 单查询风格而非 goqu 的 Dataset 分体风格,但其方言断言测试影响了本项目的测试套件。
+- [go-sqlbuilder](https://github.com/huandu/go-sqlbuilder)(MIT 协议):覆盖多种 SQL 方言的 Go 构建器。其测试场景被移植到 `test/go-sqlbuilder`(取 sqlk 支持的五种方言),在 SqlKata 基线之外再加一层交叉验证。
 - [sqlx](https://github.com/jmoiron/sqlx)(MIT 协议):执行层的基础。
 
 ## 许可证

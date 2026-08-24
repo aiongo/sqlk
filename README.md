@@ -137,6 +137,7 @@ go test ./...
 
 - [SqlKata](https://github.com/sqlkata/querybuilder) (MIT): the C# query builder this project is inspired by and ports to Go. Its capability surface, fluent style, and per-dialect compilation semantics are the baseline sqlk follows.
 - [goqu](https://github.com/doug-martin/goqu) (MIT): a long-standing Go SQL builder. sqlk deliberately keeps SqlKata's fluent single-query style rather than goqu's separate-dataset style, but goqu's dialect-assertion tests informed this project's test suite.
+- [go-sqlbuilder](https://github.com/huandu/go-sqlbuilder) (MIT): a Go SQL builder covering many flavors. Its test scenarios are migrated to `test/go-sqlbuilder` for the five dialects sqlk supports — a cross-check beyond the SqlKata baseline.
 - [sqlx](https://github.com/jmoiron/sqlx) (MIT): the execution layer's foundation.
 
 ## License
