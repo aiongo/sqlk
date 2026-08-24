@@ -23,7 +23,9 @@ package qdata
 // conventional JOINs are kept); projection, ordering, and pagination are
 // not applied and have no pointcut.
 //
-// Passing nil to ToQuery disables interception.
+// ToQuery takes the hooks as a variadic list: none at all (or a nil entry)
+// disables interception, and with several, each pointcut value passes
+// through them in order, each hook seeing the previous one's rewrite.
 type Hook interface {
 	From(from []string) ([]string, error)
 	Select(column string) (string, error)

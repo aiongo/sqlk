@@ -191,7 +191,7 @@ func TestReadmeQData(t *testing.T) {
 	if err := json.Unmarshal(payload, &q); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	query, err := q.ToQuery(nil) // nil hook = no interception
+	query, err := q.ToQuery() // no hooks = no interception
 	if err != nil {
 		t.Fatalf("to query: %v", err)
 	}

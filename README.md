@@ -102,7 +102,7 @@ var q qdata.QData
 if err := json.Unmarshal(payload, &q); err != nil {
     return err
 }
-query, err := q.ToQuery(nil) // nil hook = no interception
+query, err := q.ToQuery() // no hooks = no interception
 if err != nil {
     return err // validation problems are aggregated, errors.Is-distinguishable
 }

@@ -101,7 +101,7 @@ var q qdata.QData
 if err := json.Unmarshal(payload, &q); err != nil {
     return err
 }
-query, err := q.ToQuery(nil) // nil hook = 不做拦截
+query, err := q.ToQuery() // 无 hook = 不做拦截
 if err != nil {
     return err // 校验问题聚合返回,可用 errors.Is 判别
 }

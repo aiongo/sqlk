@@ -1,13 +1,13 @@
 // Package qdata carries the Go shape of the JSON query wire format: the JSON
 // decodes straight into a qdata.QData with encoding/json, Validate checks
 // everything and returns all problems at once, and ToQuery converts it into
-// a *sqlk.Query of the root builder, optionally through a Hook -- no SQL is
+// a *sqlk.Query of the root builder, optionally through Hooks -- no SQL is
 // produced here; the dialect compiler is the caller's choice. The package
 // depends only on the root package.
 //
 //	var q qdata.QData
 //	json.Unmarshal(payload, &q)
-//	query, err := q.ToQuery(hook)
+//	query, err := q.ToQuery()
 //	res, err := compiler.NewSqlite().Compile(query)
 package qdata
 
@@ -151,17 +151,23 @@ func (q *QData) Validate() error {
 // JOINs (counting the filtered rows) while projection, ordering, and
 // pagination do not apply to an aggregate query and are simply skipped.
 // The full validation runs first, and a failed validation returns the joined
-// error. With a non-nil hook every field passes through it for rewriting
-// and admission (see Hook): hook errors propagate as is, and a rewritten
-// from list that is empty or holds an empty element, an empty by, an empty
-// field, or an invalid op is still rejected -- the hook is a security
-// pointcut that can only tighten validation, never loosen it.
-func (q *QData) ToQuery(hook Hook) (*sqlk.Query, error) {
+// error. Every hook given as an argument runs as a serial pipeline in
+// argument order: each pointcut value passes through every hook, each hook
+// seeing the previous hook's rewrite (see Hook). A hook error aborts the
+// conversion and propagates as is, and a rewritten from list that is empty
+// or holds an empty element, an empty by, an empty field, or an invalid op
+// is still rejected -- hooks are a security pointcut that can only tighten
+// validation, never loosen it. A nil entry in the list is skipped, and no
+// hooks at all means no interception.
+func (q *QData) ToQuery(hooks ...Hook) (*sqlk.Query, error) {
 	if err := q.Validate(); err != nil {
 		return nil, err
 	}
-	if hook == nil {
-		hook = noopHook{}
+	var hook hookChain
+	for _, h := range hooks {
+		if h != nil {
+			hook = append(hook, h)
+		}
 	}
 
 	from, err := hook.From(q.From)
@@ -222,11 +228,49 @@ func (q *QData) ToQuery(hook Hook) (*sqlk.Query, error) {
 	return out, nil
 }
 
-// noopHook is the all-pass-through Hook that stands in when ToQuery receives
-// a nil hook, so pointcut calls need no per-site nil check.
-type noopHook struct{}
+// hookChain runs its hooks as a serial pipeline: each pointcut value goes
+// through every hook in order, and the first error aborts the conversion
+// as is. A chain with no hooks is the all-pass-through noop, so ToQuery's
+// no-argument call needs no separate stand-in (nil entries were already
+// dropped when the chain was built).
+type hookChain []Hook
 
-func (noopHook) From(from []string) ([]string, error) { return from, nil }
-func (noopHook) Select(column string) (string, error) { return column, nil }
-func (noopHook) OrderBy(by string) (string, error)    { return by, nil }
-func (noopHook) Rule(rule Rule) (Rule, error)         { return rule, nil }
+func (c hookChain) From(from []string) ([]string, error) {
+	for _, h := range c {
+		var err error
+		if from, err = h.From(from); err != nil {
+			return nil, err
+		}
+	}
+	return from, nil
+}
+
+func (c hookChain) Select(column string) (string, error) {
+	for _, h := range c {
+		var err error
+		if column, err = h.Select(column); err != nil {
+			return "", err
+		}
+	}
+	return column, nil
+}
+
+func (c hookChain) OrderBy(by string) (string, error) {
+	for _, h := range c {
+		var err error
+		if by, err = h.OrderBy(by); err != nil {
+			return "", err
+		}
+	}
+	return by, nil
+}
+
+func (c hookChain) Rule(rule Rule) (Rule, error) {
+	for _, h := range c {
+		var err error
+		if rule, err = h.Rule(rule); err != nil {
+			return Rule{}, err
+		}
+	}
+	return rule, nil
+}

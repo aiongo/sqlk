@@ -453,6 +453,55 @@ func TestToQueryHook(t *testing.T) {
 	})
 }
 
+func TestToQueryHookChain(t *testing.T) {
+	t.Run("hooks run in argument order, each seeing the previous rewrite", func(t *testing.T) {
+		first := stubHook{selects: func(column string) (string, error) { return "a." + column, nil }}
+		second := stubHook{selects: func(column string) (string, error) { return "b." + column, nil }}
+		query, err := mustUnmarshal(t, `{"from": ["Users"], "select": ["Name"]}`).ToQuery(first, second)
+		if err != nil {
+			t.Fatalf("ToQuery(first, second) error = %v, want nil", err)
+		}
+		// first prefixes "a.", second prefixes "b." on top: the compiled
+		// three-part identifier proves second saw first's rewrite.
+		res := mustCompile(t, compiler.New(), query)
+		if res.SQL != `SELECT "b"."a"."Name" FROM "Users"` {
+			t.Errorf("SQL = %q, want %q", res.SQL, `SELECT "b"."a"."Name" FROM "Users"`)
+		}
+	})
+
+	t.Run("error from a later hook propagates as is", func(t *testing.T) {
+		errDenied := errors.New("select is not allowed")
+		second := stubHook{selects: func(string) (string, error) { return "", errDenied }}
+		if _, err := mustUnmarshal(t, `{"from": ["Users"], "select": ["Name"]}`).ToQuery(stubHook{}, second); !errors.Is(err, errDenied) {
+			t.Errorf("ToQuery(stubHook{}, second) error = %v, want errDenied as is", err)
+		}
+	})
+
+	t.Run("later hook can still tighten validation", func(t *testing.T) {
+		second := stubHook{from: func([]string) ([]string, error) { return nil, nil }}
+		if _, err := mustUnmarshal(t, `{"from": ["Users"]}`).ToQuery(stubHook{}, second); !errors.Is(err, ErrFromRequired) {
+			t.Errorf("ToQuery(stubHook{}, second) error = %v, want ErrFromRequired", err)
+		}
+	})
+
+	t.Run("no hooks and a single nil entry behave the same", func(t *testing.T) {
+		payload := `{"from": ["Users"], "select": ["Id", "Name"]}`
+		plain, err := mustUnmarshal(t, payload).ToQuery()
+		if err != nil {
+			t.Fatalf("ToQuery() error = %v, want nil", err)
+		}
+		withNil, err := mustUnmarshal(t, payload).ToQuery(nil)
+		if err != nil {
+			t.Fatalf("ToQuery(nil) error = %v, want nil", err)
+		}
+		a := mustCompile(t, compiler.New(), plain)
+		b := mustCompile(t, compiler.New(), withNil)
+		if a.SQL != b.SQL || len(a.Args) != len(b.Args) {
+			t.Errorf("ToQuery() = %q, ToQuery(nil) = %q, want identical output", a.SQL, b.SQL)
+		}
+	})
+}
+
 // mustCompile compiles and asserts no error, for subtests asserting the
 // result directly.
 func mustCompile(t *testing.T, comp *compiler.Compiler, q *sqlk.Query) compiler.Result {

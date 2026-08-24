@@ -115,7 +115,7 @@ func TestQDataProgrammatic(t *testing.T) {
 		WithOrderBy(*qdata.NewOrderBy("CreatedAt", "desc")).
 		WithTop(20).
 		WithCount(false)
-	query, err := q.ToQuery(nil)
+	query, err := q.ToQuery()
 	if err != nil {
 		t.Fatalf("ToQuery: %v", err)
 	}

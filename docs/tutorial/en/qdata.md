@@ -54,7 +54,7 @@ if err := json.Unmarshal(payload, &q); err != nil { // no defaults to fill
 if err := q.Validate(); err != nil { // optional upfront check; ToQuery runs it too
     return err
 }
-query, err := q.ToQuery(nil) // nil hook = no interception
+query, err := q.ToQuery() // no hooks = no interception
 if err != nil {
     return err
 }
@@ -174,7 +174,7 @@ errors.Is(err, qdata.ErrInvalidOp) // true when any rule carries a bad op
 
 ## The Hook: a security checkpoint
 
-`ToQuery(hook)` invokes a `Hook` at every value boundary: the place to whitelist fields or rewrite them. Returning an error aborts the conversion and propagates as-is; a hook can only *tighten* validation, never loosen it.
+`ToQuery(hooks...)` invokes your `Hook`s at every value boundary: the place to whitelist fields or rewrite them. Several hooks run in argument order, each seeing the previous one's rewrite. Returning an error aborts the conversion and propagates as-is; a hook can only *tighten* validation, never loosen it.
 
 ```go
 type allowHook struct{ columns map[string]bool }
@@ -214,7 +214,7 @@ q := qdata.New().
     WithOrderBy(*qdata.NewOrderBy("CreatedAt", "desc")).
     WithTop(20)
 
-query, err := q.ToQuery(nil)
+query, err := q.ToQuery()
 ```
 
 ```sql

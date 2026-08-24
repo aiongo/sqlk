@@ -54,7 +54,7 @@ if err := json.Unmarshal(payload, &q); err != nil { // 无缺省值需要补齐
 if err := q.Validate(); err != nil { // 可选的前置检查;ToQuery 也会执行它
     return err
 }
-query, err := q.ToQuery(nil) // nil hook = 不拦截
+query, err := q.ToQuery() // 无 hook = 不拦截
 if err != nil {
     return err
 }
@@ -174,7 +174,7 @@ errors.Is(err, qdata.ErrInvalidOp) // 任一规则带非法 op 时为 true
 
 ## Hook:安全切点
 
-`ToQuery(hook)` 在每个值边界回调 `Hook`:这是做字段白名单或字段改写的地方。返回错误即中止转换并原样传播;Hook 只能收紧校验,不能放宽。
+`ToQuery(hooks...)` 在每个值边界回调你的 `Hook`:这是做字段白名单或字段改写的地方。多个 hook 按参数顺序执行,每个 hook 看到前一个的改写结果。返回错误即中止转换并原样传播;Hook 只能收紧校验,不能放宽。
 
 ```go
 type allowHook struct{ columns map[string]bool }
@@ -214,7 +214,7 @@ q := qdata.New().
     WithOrderBy(*qdata.NewOrderBy("CreatedAt", "desc")).
     WithTop(20)
 
-query, err := q.ToQuery(nil)
+query, err := q.ToQuery()
 ```
 
 ```sql
