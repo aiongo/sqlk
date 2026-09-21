@@ -158,3 +158,15 @@ var ErrMixedInsertForm = errors.New("insert cannot mix row values and insert-fro
 // InsertRows called with columns but no rows): there is nothing to write,
 // distinct from a row whose shape is malformed (ErrInvalidWriteValues).
 var ErrNoInsertRows = errors.New("insert has no rows to write")
+
+// ErrConflictNotSupported reports an insert query carrying an OnConflict
+// clause compiled by a dialect without an upsert form (the base compiler
+// and every dialect except MySQL so far): upsert semantics cannot be
+// expressed there, and dropping the clause would silently turn the upsert
+// into a plain insert, so the clause is rejected up front.
+var ErrConflictNotSupported = errors.New("on-conflict clause is not supported by this dialect")
+
+// ErrConflictWithoutInsert reports an OnConflict clause on a query that is
+// not an insert (a select, update, or delete): the clause has no meaning
+// there, so it is rejected up front rather than silently ignored.
+var ErrConflictWithoutInsert = errors.New("on-conflict clause requires an insert query")

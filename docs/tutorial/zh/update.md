@@ -75,6 +75,22 @@ INSERT INTO [ActiveUsers] ([Id], [Name], [Address]) SELECT * FROM [Users] WHERE 
 
 args: `[1]`
 
+### 冲突时更新(Upsert)
+`OnConflict` 把 INSERT 标记为 upsert:命中唯一键冲突时,指定列回写为本次插入的值。各插入形态(单行、多行、从查询插入)均适用;目前仅 MySQL 方言支持,其余方言在编译期报错。
+
+```go
+query := sqlk.NewQuery().From("Products").InsertRows([]string{"Name", "Price"},
+    []any{"A", 1000},
+    []any{"B", 2000},
+).OnConflict("Price")
+```
+
+MySQL 下编译为
+
+```sql
+INSERT IGNORE INTO `Products` (`Name`, `Price`) VALUES (?, ?), (?, ?) ON DUPLICATE KEY UPDATE `Price` = VALUES(`Price`)
+```
+
 ## Update
 
 ```go

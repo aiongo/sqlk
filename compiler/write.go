@@ -25,29 +25,54 @@ import (
 // non-empty.
 func (c *Compiler) compileInsert(res *Result, clauses []core.Clause) string {
 	table := c.writeTable(res, clauses)
+	tail := c.conflictTail(res, clauses)
 	inserts := c.components(clauses, core.Insert)
 	if query, ok := inserts[0].(*core.InsertQueryClause); ok {
-		return c.singleInsertStart + " " + table + c.insertColumns(query.Columns) + " " +
-			c.compileSubQuery(res, query.Query)
+		return c.insertStart(clauses, false) + " " + table + c.insertColumns(query.Columns) + " " +
+			c.compileSubQuery(res, query.Query) + tail
 	}
 	multi := len(inserts) > 1
-	start := c.singleInsertStart
-	if multi {
-		start = c.multiInsertStart
-	}
 	first := inserts[0].(*core.InsertClause)
-	sql := start + " " + table + c.insertColumns(first.Columns) + " VALUES (" + c.parameterize(res, first.Values) + ")"
+	sql := c.insertStart(clauses, multi) + " " + table + c.insertColumns(first.Columns) + " VALUES (" + c.parameterize(res, first.Values) + ")"
 	if multi {
 		rest := make([]*core.InsertClause, 0, len(inserts)-1)
 		for _, cl := range inserts[1:] {
 			rest = append(rest, cl.(*core.InsertClause))
 		}
-		return sql + c.remainingInsertForm(res, table, rest)
+		return sql + c.remainingInsertForm(res, table, rest) + tail
 	}
 	if first.ReturnId && c.lastID != "" {
-		sql += ";" + c.lastID
+		sql += tail + ";" + c.lastID
+		return sql
 	}
-	return sql
+	return sql + tail
+}
+
+// insertStart renders the INSERT opening keyword: the single- or multi-row
+// form, replaced by conflictInsertStart when the query carries an
+// OnConflict clause and the dialect pairs its upsert tail with an ignore
+// flag (MySQL's INSERT IGNORE INTO; empty on the other dialects).
+func (c *Compiler) insertStart(clauses []core.Clause, multi bool) string {
+	if c.conflictForm != nil && c.one(clauses, core.Conflict) != nil && c.conflictInsertStart != "" {
+		return c.conflictInsertStart
+	}
+	if multi {
+		return c.multiInsertStart
+	}
+	return c.singleInsertStart
+}
+
+// conflictTail compiles the upsert tail for an insert carrying an
+// OnConflict clause (the empty string when there is none). Validation has
+// already run at the compile entry point: the method is insert, the
+// dialect has an upsert form, and the columns are non-empty, so the type
+// assertion and the nil check hold by the time this runs.
+func (c *Compiler) conflictTail(res *Result, clauses []core.Clause) string {
+	conflict, ok := c.one(clauses, core.Conflict).(*core.OnConflictClause)
+	if !ok || c.conflictForm == nil {
+		return ""
+	}
+	return " " + c.conflictForm(res, conflict.Columns)
 }
 
 // standardRemainingInserts is the default form for the rows after the
@@ -171,10 +196,17 @@ func (c *Compiler) writeTable(res *Result, clauses []core.Clause) string {
 // (no columns/values, mismatched counts). Select queries have nothing to
 // check.
 func (c *Compiler) validateWrite(method core.Method, clauses []core.Clause) error {
-	if method == core.MethodSelect {
-		return nil
-	}
 	var errs []error
+	conflicts := c.components(clauses, core.Conflict)
+	// An OnConflict clause only makes sense on an insert; reject it on
+	// every other method (select included) up front instead of silently
+	// ignoring it.
+	if len(conflicts) > 0 && method != core.MethodInsert {
+		errs = append(errs, ErrConflictWithoutInsert)
+	}
+	if method == core.MethodSelect {
+		return errors.Join(errs...)
+	}
 	if len(c.components(clauses, core.Combine)) > 0 {
 		errs = append(errs, ErrCombineNotSelect)
 	}
@@ -215,6 +247,21 @@ func (c *Compiler) validateWrite(method core.Method, clauses []core.Clause) erro
 		for _, cl := range inserts {
 			if values, ok := cl.(*core.InsertClause); ok {
 				errs = append(errs, validateWriteValues(values.Columns, values.Values)...)
+			}
+		}
+		// An upsert tail needs a dialect form: a dialect without one cannot
+		// express the semantics, and dropping the clause would silently turn
+		// the upsert into a plain insert. An empty column set would compile
+		// to an invalid tail (nothing to update), so it reuses the write
+		// shape error ("no columns").
+		if len(conflicts) > 0 {
+			if c.conflictForm == nil {
+				errs = append(errs, ErrConflictNotSupported)
+			}
+			for _, cl := range conflicts {
+				if conflict, ok := cl.(*core.OnConflictClause); ok && len(conflict.Columns) == 0 {
+					errs = append(errs, &WriteValuesError{})
+				}
 			}
 		}
 	case core.MethodUpdate:

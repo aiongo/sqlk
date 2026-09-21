@@ -445,3 +445,71 @@ func TestMysqlBuildSurface(t *testing.T) {
 		},
 	})
 }
+
+// OnConflict compiles as the MySQL-native upsert tail: each named column
+// takes the inserted row's value. Covered here: single-row, multi-row,
+// insert-from-select, and returnId forms (the tail lands before the
+// last-insert-id statement), plus For engine scoping.
+func TestMysqlOnConflict(t *testing.T) {
+	runCompileCases(t, NewMysql(), []compileCase{
+		{
+			name: "single-row insert with upsert tail",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("Users").Insert(sqlk.Record{"Name": "x", "Age": 18}).
+					OnConflict("Name", "Age")
+			},
+			sql:  "INSERT IGNORE INTO `Users` (`Age`, `Name`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`), `Age` = VALUES(`Age`)",
+			args: []any{18, "x"},
+		},
+		{
+			name: "multi-row insert with upsert tail",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("Products").InsertRows([]string{"Name", "Price"},
+					[]any{"A", 1000},
+					[]any{"B", 2000},
+				).OnConflict("Price")
+			},
+			sql:  "INSERT IGNORE INTO `Products` (`Name`, `Price`) VALUES (?, ?), (?, ?) ON DUPLICATE KEY UPDATE `Price` = VALUES(`Price`)",
+			args: []any{"A", 1000, "B", 2000},
+		},
+		{
+			name: "insert from select with upsert tail",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("ActiveUsers").InsertFrom([]string{"Id", "Name"},
+					sqlk.NewQuery().From("Users").WhereEq("Active", 1),
+				).OnConflict("Name")
+			},
+			sql:  "INSERT IGNORE INTO `ActiveUsers` (`Id`, `Name`) SELECT * FROM `Users` WHERE `Active` = ? ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`)",
+			args: []any{1},
+		},
+		{
+			name: "returnId keeps the upsert tail before the last-id statement",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("Books").InsertReturnId(sqlk.Record{"Title": "T"}).OnConflict("Title")
+			},
+			sql:  "INSERT IGNORE INTO `Books` (`Title`) VALUES (?) ON DUPLICATE KEY UPDATE `Title` = VALUES(`Title`);SELECT last_insert_id() as Id",
+			args: []any{"T"},
+		},
+		{
+			name: "mysql-scoped conflict clause is visible to the mysql compiler",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("Table").Insert(sqlk.Record{"A": 1}).
+					For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.OnConflict("A") })
+			},
+			sql:  "INSERT IGNORE INTO `Table` (`A`) VALUES (?) ON DUPLICATE KEY UPDATE `A` = VALUES(`A`)",
+			args: []any{1},
+		},
+		{
+			// A dialect-scoped clause is invisible to other engines per the
+			// For contract: postgres compiles without it (its own rejection
+			// covers unscoped clauses).
+			name: "postgres-scoped conflict clause is invisible",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("Table").Insert(sqlk.Record{"A": 1}).
+					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.OnConflict("A") })
+			},
+			sql:  "INSERT INTO `Table` (`A`) VALUES (?)",
+			args: []any{1},
+		},
+	})
+}

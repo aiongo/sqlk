@@ -31,6 +31,10 @@ const (
 	Combine Component = "combine"
 	Insert  Component = "insert"
 	Update  Component = "update"
+	// Conflict is the upsert tail of an insert (see OnConflictClause): its
+	// compilation form is dialect-specific, so it is kept apart from the
+	// insert section and rejected by dialects without an upsert form.
+	Conflict Component = "conflict"
 )
 
 // Clause is a single clause accumulated on a query. Each clause carries a

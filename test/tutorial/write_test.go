@@ -66,6 +66,18 @@ func TestInsertFrom(t *testing.T) {
 		`INSERT INTO [ActiveUsers] ([Id], [Name], [Address]) SELECT * FROM [Users] WHERE [Active] = ?`, 1)
 }
 
+func TestOnConflict(t *testing.T) {
+	// Upsert: on a unique-key conflict the named columns take the inserted
+	// row's values (MySQL-native form; other dialects reject the clause).
+	assertSQL(t, compiler.NewMysql(),
+		sqlk.NewQuery().From("Products").InsertRows([]string{"Name", "Price"},
+			[]any{"A", 1000},
+			[]any{"B", 2000},
+		).OnConflict("Price"),
+		"INSERT IGNORE INTO `Products` (`Name`, `Price`) VALUES (?, ?), (?, ?) ON DUPLICATE KEY UPDATE `Price` = VALUES(`Price`)",
+		"A", 1000, "B", 2000)
+}
+
 func TestUpdate(t *testing.T) {
 	assertSQL(t, compiler.NewSqlserver(),
 		sqlk.NewQuery().From("Posts").WhereNull("AuthorId").Update(sqlk.Record{"AuthorId": 10}),

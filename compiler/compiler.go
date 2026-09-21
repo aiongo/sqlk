@@ -126,6 +126,25 @@ type Compiler struct {
 	// Oracle's INSERT ALL INTO form).
 	remainingInsertForm func(res *Result, table string, inserts []*core.InsertClause) string
 
+	// conflictForm renders the upsert tail of an INSERT carrying an
+	// OnConflict clause: it receives the columns to update from the
+	// inserted values and returns the statement tail (with its argument
+	// bindings; the form binds none for MySQL's VALUES(col) shape). nil on
+	// the base compiler and every dialect without an upsert form — such a
+	// dialect rejects the clause at the compile entry point
+	// (ErrConflictNotSupported) instead of silently dropping it. Dialect
+	// constructors with an upsert form install their own (MySQL's
+	// ON DUPLICATE KEY UPDATE).
+	conflictForm func(res *Result, columns []string) string
+
+	// conflictInsertStart replaces the INSERT opening keyword when the
+	// query carries an OnConflict clause (the empty string keeps the
+	// standard opening). MySQL sets INSERT IGNORE INTO — the ignore flag
+	// accompanies the upsert tail per MySQL convention (goqu's mysql
+	// dialect emits the same pairing), downgrading data errors to warnings
+	// while ON DUPLICATE KEY UPDATE resolves key conflicts.
+	conflictInsertStart string
+
 	// wrapSelectForm wraps the compiled select sections as a whole (Oracle
 	// legacy pagination rewraps the entire SELECT after the sections are
 	// compiled): it receives the section output and the query being

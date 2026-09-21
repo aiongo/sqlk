@@ -4014,6 +4014,68 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 	})
 }
 
+// OnConflict clauses mark an insert as an upsert. The base compiler has no
+// upsert form: it rejects the clause instead of silently dropping it, and
+// rejects the clause outside insert queries as well.
+func TestCompileInsertOnConflictValidation(t *testing.T) {
+	t.Run("base compiler rejects the clause", func(t *testing.T) {
+		_, err := New().Compile(sqlk.NewQuery().From("Table").
+			Insert(sqlk.Record{"A": 1}).OnConflict("A"))
+		if !errors.Is(err, ErrConflictNotSupported) {
+			t.Fatalf("Compile(...) error = %v, want ErrConflictNotSupported", err)
+		}
+	})
+
+	t.Run("clause on a non-insert query is rejected", func(t *testing.T) {
+		for _, tt := range []struct {
+			name  string
+			build func(*sqlk.Query) *sqlk.Query
+		}{
+			{
+				name:  "select",
+				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Select("x").OnConflict("x") },
+			},
+			{
+				name:  "update",
+				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Update(sqlk.Record{"x": 1}).OnConflict("x") },
+			},
+			{
+				name:  "delete",
+				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Delete().OnConflict("x") },
+			},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := New().Compile(tt.build(sqlk.NewQuery()))
+				if !errors.Is(err, ErrConflictWithoutInsert) {
+					t.Fatalf("Compile(...) error = %v, want ErrConflictWithoutInsert", err)
+				}
+			})
+		}
+	})
+
+	t.Run("empty column set is rejected", func(t *testing.T) {
+		_, err := NewMysql().Compile(sqlk.NewQuery().From("Table").
+			Insert(sqlk.Record{"A": 1}).OnConflict())
+		if !errors.Is(err, ErrInvalidWriteValues) {
+			t.Fatalf("Compile(...) error = %v, want ErrInvalidWriteValues", err)
+		}
+	})
+
+	// Clone deep-copies the conflict clause: later calls on the base do not
+	// leak into the variant.
+	t.Run("conflict clause survives Clone", func(t *testing.T) {
+		base := sqlk.NewQuery().From("Table").Insert(sqlk.Record{"A": 1}).OnConflict("A")
+		variant := base.Clone()
+		base.OnConflict("B")
+
+		want := "INSERT IGNORE INTO `Table` (`A`) VALUES (?) ON DUPLICATE KEY UPDATE `A` = VALUES(`A`)"
+		got := mustCompile(t, NewMysql(), variant)
+		if got.SQL != want {
+			t.Errorf("variant SQL = %q, want %q", got.SQL, want)
+		}
+	})
+}
+
 func TestCompileUpdate(t *testing.T) {
 	runCompileCases(t, New(), []compileCase{
 		{

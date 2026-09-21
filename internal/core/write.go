@@ -123,6 +123,33 @@ func (c *IncrementClause) Clone() Clause {
 	return &clone
 }
 
+// OnConflictClause declares the upsert tail of an INSERT: on a unique-key
+// conflict the named columns take the values of the row being inserted.
+// The compiled form is dialect-specific (MySQL: "ON DUPLICATE KEY UPDATE
+// column = VALUES(column), ..."); dialects without an upsert form reject
+// the clause at the compile entry point rather than silently dropping it.
+type OnConflictClause struct {
+	Base
+	Columns []string
+}
+
+// NewOnConflict creates an upsert-tail clause; the columns are copied to
+// their own backing array.
+func NewOnConflict(columns []string) *OnConflictClause {
+	return &OnConflictClause{
+		component: Conflict,
+		Columns:   slices.Clone(columns),
+	}
+}
+
+// Clone deep-copies the clause; the columns are copied to their own
+// backing array.
+func (c *OnConflictClause) Clone() Clause {
+	clone := *c
+	clone.Columns = slices.Clone(c.Columns)
+	return &clone
+}
+
 // Method is the query's verb marker: the return value of Method(), with
 // select as the default (the empty string).
 type Method string
@@ -184,6 +211,19 @@ func (q *Query) InsertFrom(columns []string, sub *Query) *Query {
 	q.method = MethodInsert
 	q.dropClausesInScope(Insert)
 	q.addClause(NewInsertQueryClause(columns, sub))
+	return q
+}
+
+// OnConflict marks the query's INSERT as an upsert: on a unique-key
+// conflict the named columns are updated with the values of the row being
+// inserted. It applies to every insert form (row values, multiple rows,
+// and insert from select) and compiles per dialect (MySQL: ON DUPLICATE
+// KEY UPDATE); dialects without an upsert form reject the clause at the
+// compile entry point. Repeated calls keep the last one within the same
+// engine scope. The clause is meaningless outside an insert and is
+// rejected there at the compile entry point.
+func (q *Query) OnConflict(columns ...string) *Query {
+	q.setOrReplace(NewOnConflict(columns))
 	return q
 }
 
