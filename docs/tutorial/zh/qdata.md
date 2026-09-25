@@ -2,7 +2,7 @@
 
 `qdata` 包是 JSON 查询线协议的 Go 侧形态:不受信任(或单纯外部)的调用方以 JSON 描述「要什么」,库把它转换为根包的 `*sqlk.Query`,绝不直接产出 SQL。方言编译器仍由你选择。
 
-`select` / `filter` / `orderby` / `top` / `skip` / `count` 键名取自 OData 查询选项;`from` 为本协议自有的资源列表;filter 子键(`group_op` / `field` / `op` / `data`)沿用旧键。旧协议顶层键(`entity`、`limit`、`sort`、`selects`、`sorts`、`includes`)被忽略。相对旧的 goqu 实现,操作符语义修正了四处(见[操作符语义](#操作符语义))。
+`select` / `filter` / `orderby` / `top` / `skip` / `count` 键名与 OData 查询选项一致,语义可参照 OData 规范;`from` 为本协议自有的资源列表,filter 子键为 `group_op` / `field` / `op` / `data`。
 
 ## 载荷
 
@@ -92,7 +92,7 @@ INNER JOIN "Authors" ON "Posts"."Authors_id" = "Authors"."Authors_id" LIMIT ?
 
 args: `[5]`
 
-(旧协议的 `includes` 即归宿于此:关联表直接进入 `from` 列表。更细粒度的连接仍走根构建器的 `Join` 族。)
+(更细粒度的连接仍走根构建器的 `Join` 族。)
 
 ## 操作符语义
 
@@ -110,12 +110,7 @@ args: `[5]`
 
 LIKE 族编译为普通 `LIKE`(不包 `LOWER`、值不小写化);大小写敏感性交由数据库排序规则决定。
 
-相对旧实现,这里修正了四处语义:
-
-1. `bw` / `ew` / `cn` 分别生成前缀(`data%`)、后缀(`%data`)、包含(`%data%`)模式;旧实现一律生成 `%data%`,`bn` / `en` / `nc` 为其否定。
-2. `is` / `ns` 编译为 `IS NULL` / `IS NOT NULL`,不再借用值参数。
-3. `in` / `ni` 的 data 既接受数组也接受单标量(单值枚举不必再包一层)。
-4. `count: true` 生成真正的 COUNT 聚合查询;旧实现的该分支未完成。
+`bw` / `ew` / `cn` 分别生成前缀(`data%`)、后缀(`%data`)、包含(`%data%`)模式,`bn` / `en` / `nc` 为其否定形态。
 
 ```json
 {
@@ -151,7 +146,7 @@ SELECT COUNT(*) AS "count" FROM "Posts" WHERE "Status" = ?
 
 args: `["active"]`
 
-两条旧行为出于兼容保留:data 为空(空串、空数组、`null`)的规则在编译时跳过但仍参与校验;未知 JSON 键被忽略。
+data 为空(空串、空数组、`null`)的规则在编译时跳过但仍参与校验;未知 JSON 键被忽略。
 
 ## 校验
 

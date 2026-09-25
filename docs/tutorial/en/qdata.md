@@ -2,7 +2,7 @@
 
 The `qdata` package is the Go side of a JSON query wire protocol: untrusted (or simply external) callers describe *what* they want in JSON, and the library turns it into a root-package `*sqlk.Query`, never SQL directly. The dialect compiler stays your choice.
 
-The keys `select` / `filter` / `orderby` / `top` / `skip` / `count` take their names from OData query options; `from` is this protocol's own resource list; the filter sub-keys (`group_op` / `field` / `op` / `data`) keep their legacy shapes. Legacy top-level keys (`entity`, `limit`, `sort`, `selects`, `sorts`, `includes`) are ignored. Relative to the legacy goqu-based implementation the operator semantics carry four fixes (see [Operator semantics](#operator-semantics)).
+The keys `select` / `filter` / `orderby` / `top` / `skip` / `count` mirror the OData query options; the OData spec is a useful reference for their semantics. `from` is this protocol's own resource list, and the filter sub-keys are `group_op` / `field` / `op` / `data`.
 
 ## The payload
 
@@ -92,7 +92,7 @@ INNER JOIN "Authors" ON "Posts"."Authors_id" = "Authors"."Authors_id" LIMIT ?
 
 args: `[5]`
 
-(This is where the legacy protocol's `includes` went: the join list now lives in `from` itself. Finer-grained joins stay available through the root builder's `Join` family.)
+(Finer-grained joins stay available through the root builder's `Join` family.)
 
 ## Operator semantics
 
@@ -110,12 +110,7 @@ The 16 operator codes:
 
 The LIKE family compiles to plain `LIKE` (no `LOWER`, no lowercasing); case sensitivity is left to the database collation.
 
-Relative to the legacy implementation, four semantics are fixed here:
-
-1. `bw` / `ew` / `cn` generate prefix (`data%`), suffix (`%data`) and contains (`%data%`) patterns respectively; the legacy version produced `%data%` for all of them, and `bn` / `en` / `nc` are their negations.
-2. `is` / `ns` compile to `IS NULL` / `IS NOT NULL` instead of borrowing the value parameter.
-3. `in` / `ni` accept an array **or** a single scalar (a single enum value no longer needs wrapping).
-4. `count: true` produces a real COUNT aggregate query; the legacy branch was unimplemented.
+`bw` / `ew` / `cn` generate prefix (`data%`), suffix (`%data`) and contains (`%data%`) patterns respectively; `bn` / `en` / `nc` are their negations.
 
 ```json
 {
@@ -151,7 +146,7 @@ SELECT COUNT(*) AS "count" FROM "Posts" WHERE "Status" = ?
 
 args: `["active"]`
 
-Two legacy behaviors are kept for compatibility: rules with empty `data` (empty string, empty array, `null`) are skipped at compile time but still validated; unknown JSON keys are ignored.
+Rules with empty `data` (empty string, empty array, `null`) are skipped at compile time but still validated; unknown JSON keys are ignored.
 
 ## Validation
 
