@@ -12,7 +12,7 @@ db := exec.New(sqlxDB, compiler.NewSqlite())
 ## 写入单条
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").Insert(sqlk.Record{
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsert(sqlk.Record{
     "Title":  "Introduction to C#",
     "Price":  18,
     "Status": "active",
@@ -24,7 +24,7 @@ affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").Insert(sqlk.Record{
 `InsertGetId` 在查询副本上构建 returnId 形态的 INSERT,执行并在同一往返取回 id(尾部 LastId 语句按方言——Sql Server 的 `scope_identity()`、PostgreSql 的 `lastval()`、SQLite 的 `last_insert_rowid()`):
 
 ```go
-id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"), sqlk.Record{
+id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"), sqlk.Record{
     "Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01",
 })
 // id == 4
@@ -37,7 +37,7 @@ id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"), sqlk.Record
 ```go
 cols := []string{"Name", "Price"}
 
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Products").InsertRows(cols,
+affected, err := db.Exec(ctx, sqlk.NewQuery("Products").AsInsertRows(cols,
     []any{"A", 1000},
     []any{"B", 2000},
     []any{"C", 3000},
@@ -48,32 +48,32 @@ affected, err := db.Exec(ctx, sqlk.NewQuery().From("Products").InsertRows(cols,
 
 ```go
 columns := []string{"Title", "Price", "Status"}
-articlesQuery := sqlk.NewQuery().From("Articles").WhereEq("Type", "Book").Limit(100)
+articlesQuery := sqlk.NewQuery("Articles").WhereEq("Type", "Book").Limit(100)
 
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").InsertFrom(columns, articlesQuery))
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsertFrom(columns, articlesQuery))
 ```
 
 ## 更新数据
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").
     WhereEq("Id", 1).
-    Update(sqlk.Record{
+    AsUpdate(sqlk.Record{
         "Price":  18,
         "Status": "active",
     }))
 // affected == 1
 ```
 
-`Increment` / `Decrement` 动词走同一条路径:
+`AsIncrement` / `AsDecrement` 动词走同一条路径:
 
 ```go
-_, err := db.Exec(ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1).Increment("Likes"))
+_, err := db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1).AsIncrement("Likes"))
 // 该行的 Likes 从 30 变为 31
 ```
 
 ## 删除
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").WhereEq("Status", "inactive").Delete())
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").WhereEq("Status", "inactive").AsDelete())
 ```

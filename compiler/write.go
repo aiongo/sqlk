@@ -224,7 +224,7 @@ func (c *Compiler) validateWrite(method core.Method, clauses []core.Clause) erro
 			// Distinguish "no write values given" from "write values all
 			// scoped by For to other dialects": the latter leaves the
 			// current dialect nothing to produce. The no-values case is
-			// reachable only by InsertRows called with columns but no rows
+			// reachable only by AsInsertRows called with columns but no rows
 			// (every other write verb lays down a clause), so it is its own
 			// sentinel rather than a malformed-row WriteValuesError.
 			if len(core.Components(clauses, core.Insert, "")) > 0 {
@@ -236,7 +236,7 @@ func (c *Compiler) validateWrite(method core.Method, clauses []core.Clause) erro
 		}
 		// Row-values clauses and an insert-from-select clause cannot share
 		// one statement; For engine scoping can surface both against the
-		// same dialect (an unscoped Insert plus a dialect-scoped
+		// same dialect (an unscoped AsInsert plus a dialect-scoped
 		// InsertFrom). Reject the mix up front: compileInsert's type
 		// assertions assume a single form, so a mix would otherwise panic
 		// or silently drop one form.

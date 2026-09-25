@@ -8,10 +8,10 @@ sqlk 提供大量实用的方法,让编写 `Where` 条件变得容易。
 `WhereEq` 动词是等值比较的简写,以下两种写法完全等价。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereEq("Id", 10)
+sqlk.NewQuery("Posts").WhereEq("Id", 10)
 
 // 显式操作符形态
-sqlk.NewQuery().From("Posts").Where("Id", "=", 10)
+sqlk.NewQuery("Posts").Where("Id", "=", 10)
 ```
 
 ```sql
@@ -21,7 +21,7 @@ SELECT * FROM [Posts] WHERE [Id] = ?
 args: `[10]`
 
 ```go
-sqlk.NewQuery().From("Posts").WhereFalse("IsPublished").Where("Score", ">", 10)
+sqlk.NewQuery("Posts").WhereFalse("IsPublished").Where("Score", ">", 10)
 ```
 
 ```sql
@@ -36,7 +36,7 @@ args: `[10]`
 想按多个字段过滤时,传入表达「列/值」的 map。列按字典序输出,保证编译产物确定(Go map 迭代顺序不定;AND 连接下列序不影响语义)。
 
 ```go
-query := sqlk.NewQuery().From("Posts").WhereMap(sqlk.Record{
+query := sqlk.NewQuery("Posts").WhereMap(sqlk.Record{
     "Year":         2017,
     "CategoryId":   198,
     "IsPublished":  true,
@@ -53,7 +53,7 @@ args: `[198, true, 2017]`
 按 `NULL`、布尔 `true` 与布尔 `false` 过滤。
 
 ```go
-sqlk.NewQuery().From("Users").WhereFalse("IsActive").OrWhereNull("LastActivityDate")
+sqlk.NewQuery("Users").WhereFalse("IsActive").OrWhereNull("LastActivityDate")
 ```
 
 ```sql
@@ -68,11 +68,11 @@ SELECT * FROM [Users] WHERE [IsActive] = cast(0 as bit) OR [LastActivityDate] IS
 
 ```go
 // 可用库存(按出入库流水汇总)低于 10 的商品
-sold := sqlk.NewQuery().From("OrderItems").
+sold := sqlk.NewQuery("OrderItems").
     WhereColumns("OrderItems.ProductId", "=", "Products.Id").
-    Sum("Quantity")
+    AsSum("Quantity")
 
-query := sqlk.NewQuery().From("Products").WhereSub(sold, "<", 10)
+query := sqlk.NewQuery("Products").WhereSub(sold, "<", 10)
 ```
 
 ```sql
@@ -87,7 +87,7 @@ args: `[10]`
 把条件包进 `WhereGroup` 回调即可分组。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereGroup(func(q *sqlk.Query) *sqlk.Query {
+sqlk.NewQuery("Posts").WhereGroup(func(q *sqlk.Query) *sqlk.Query {
     return q.WhereFalse("IsPublished").OrWhereEq("CommentsCount", 0)
 })
 ```
@@ -104,7 +104,7 @@ args: `[0]`
 想比较两个列时使用此动词。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereColumns("Upvotes", ">", "Downvotes")
+sqlk.NewQuery("Posts").WhereColumns("Upvotes", ">", "Downvotes")
 ```
 
 ```sql
@@ -114,7 +114,7 @@ SELECT * FROM [Posts] WHERE [Upvotes] > [Downvotes]
 ## 区间(Between)
 
 ```go
-sqlk.NewQuery().From("Posts").WhereBetween("Score", 10, 20)
+sqlk.NewQuery("Posts").WhereBetween("Score", 10, 20)
 ```
 
 ```sql
@@ -128,7 +128,7 @@ args: `[10, 20]`
 ## Where In
 以变参列表传值,生成 SQL 的 `WHERE IN` 条件。
 ```go
-sqlk.NewQuery().From("Posts").WhereNotIn("AuthorId", 1, 2, 3, 4, 5)
+sqlk.NewQuery("Posts").WhereNotIn("AuthorId", 1, 2, 3, 4, 5)
 ```
 
 ```sql
@@ -140,9 +140,9 @@ args: `[1, 2, 3, 4, 5]`
 用 `WhereNotInSub` 传入 `*Query`,以子查询为集合
 
 ```go
-blocked := sqlk.NewQuery().From("Authors").WhereEq("Status", "blocked").Select("Id")
+blocked := sqlk.NewQuery("Authors").WhereEq("Status", "blocked").Select("Id")
 
-sqlk.NewQuery().From("Posts").WhereNotInSub("AuthorId", blocked)
+sqlk.NewQuery("Posts").WhereNotInSub("AuthorId", blocked)
 ```
 
 ```sql
@@ -158,8 +158,8 @@ args: `["blocked"]`
 选出至少有一条评论的文章。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereExists(
-    sqlk.NewQuery().From("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"),
+sqlk.NewQuery("Posts").WhereExists(
+    sqlk.NewQuery("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"),
 )
 ```
 
@@ -181,7 +181,7 @@ sqlk 会省略 `EXISTS` 子查询的投影列、改为常量 `1`,以在所有方
 
 
 ```go
-sqlk.NewQuery().From("Posts").WhereRaw("lower(Title) = ?", "sql")
+sqlk.NewQuery("Posts").WhereRaw("lower(Title) = ?", "sql")
 ```
 
 ```sql
@@ -193,7 +193,7 @@ args: `["sql"]`
 有时用引擎标识符包裹表/列是有用的,对 PostgreSql 这类大小写敏感的数据库尤其如此;把字符串包在 `[` 与 `]` 之间,sqlk 会替换为对应方言的标识符。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereRaw("lower([Title]) = ?", "sql")
+sqlk.NewQuery("Posts").WhereRaw("lower([Title]) = ?", "sql")
 ```
 
 Sql Server 中

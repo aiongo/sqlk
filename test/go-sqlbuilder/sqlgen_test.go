@@ -334,14 +334,14 @@ func TestConditionScenarios(t *testing.T) {
 			// predicate is a column-to-column comparison (WhereColumns).
 			name: "exists subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").WhereExists(sqlk.NewQuery().From("c").WhereColumns("c.t_id", "=", "t.id"))
+				return q.From("t").WhereExists(sqlk.NewQuery("c").WhereColumns("c.t_id", "=", "t.id"))
 			},
 			sql: `SELECT * FROM "t" WHERE EXISTS (SELECT 1 FROM "c" WHERE "c"."t_id" = "t"."id")`,
 		},
 		{
 			name: "not exists subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").WhereNotExists(sqlk.NewQuery().From("c"))
+				return q.From("t").WhereNotExists(sqlk.NewQuery("c"))
 			},
 			sql: `SELECT * FROM "t" WHERE NOT EXISTS (SELECT 1 FROM "c")`,
 		},
@@ -507,7 +507,7 @@ func TestInsertScenarios(t *testing.T) {
 			// ExampleInsertInto: columns + one row of values.
 			name: "cols and values",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").InsertColumns([]string{"id", "name", "status"}, []any{4, "Sample", 2})
+				return q.From("demo.user").AsInsertColumns([]string{"id", "name", "status"}, []any{4, "Sample", 2})
 			},
 			sql:  `INSERT INTO "demo"."user" ("id", "name", "status") VALUES (?, ?, ?)`,
 			args: []any{4, "Sample", 2},
@@ -517,7 +517,7 @@ func TestInsertScenarios(t *testing.T) {
 			// raw expression value (UNIX_TIMESTAMP(NOW())) is inlined.
 			name: "multi-row values with a raw expression",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").InsertRows([]string{"id", "name", "status", "created_at"},
+				return q.From("demo.user").AsInsertRows([]string{"id", "name", "status", "created_at"},
 					[]any{1, "Huan Du", 1, sqlk.NewUnsafeLiteral("UNIX_TIMESTAMP(NOW())")},
 					[]any{2, "Charmy Liu", 1, 1234567890})
 			},
@@ -528,7 +528,7 @@ func TestInsertScenarios(t *testing.T) {
 			// ExampleInsertBuilder_subSelect: insert into select.
 			name: "insert from select",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").InsertFrom([]string{"id", "name"},
+				return q.From("demo.user").AsInsertFrom([]string{"id", "name"},
 					sqlk.NewQuery().Select("id", "name").From("demo.test").WhereEq("id", 1))
 			},
 			sql:  `INSERT INTO "demo"."user" ("id", "name") SELECT "id", "name" FROM "demo"."test" WHERE "id" = ?`,
@@ -538,7 +538,7 @@ func TestInsertScenarios(t *testing.T) {
 			// ExampleInsertBuilder_NumValue: the key-value form.
 			name: "key-value form sorts map keys",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").Insert(sqlk.Record{"name": "Huan Du", "id": 1})
+				return q.From("demo.user").AsInsert(sqlk.Record{"name": "Huan Du", "id": 1})
 			},
 			sql:  `INSERT INTO "demo"."user" ("id", "name") VALUES (?, ?)`,
 			args: []any{1, "Huan Du"},
@@ -547,7 +547,7 @@ func TestInsertScenarios(t *testing.T) {
 			// A NULL value is parameterized like any other value.
 			name: "null value is parameterized",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("books").InsertColumns([]string{"id", "author", "isbn", "date"}, []any{1, "Author 1", "123456", nil})
+				return q.From("books").AsInsertColumns([]string{"id", "author", "isbn", "date"}, []any{1, "Author 1", "123456", nil})
 			},
 			sql:  `INSERT INTO "books" ("id", "author", "isbn", "date") VALUES (?, ?, ?, ?)`,
 			args: []any{1, "Author 1", "123456", nil},
@@ -565,20 +565,20 @@ func TestUpdateScenarios(t *testing.T) {
 			// ExampleUpdate: a raw set expression with a raw where.
 			name: "raw set and raw where",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").UpdateColumns([]string{"visited"}, []any{sqlk.NewUnsafeLiteral("visited + 1")}).WhereRaw("id = 1234")
+				return q.From("demo.user").AsUpdateColumns([]string{"visited"}, []any{sqlk.NewUnsafeLiteral("visited + 1")}).WhereRaw("id = 1234")
 			},
 			sql: `UPDATE "demo"."user" SET "visited" = visited + 1 WHERE id = 1234`,
 		},
 		{
 			// ExampleUpdateBuilder: assign + increment + raw set in one SET
 			// clause, with a where section mirroring ExampleSelectBuilder.
-			// sqlk's Increment verb replaces the whole set, so to keep all
+			// sqlk's AsIncrement verb replaces the whole set, so to keep all
 			// three assignments in one SET (matching go-sqlbuilder), the
 			// increment and raw expression are written as raw set values.
 			name: "assign increment and raw set with where",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("demo.user").
-					UpdateColumns(
+					AsUpdateColumns(
 						[]string{"type", "credit", "modified_at"},
 						[]any{"sys", sqlk.NewUnsafeLiteral("credit + 1"), sqlk.NewUnsafeLiteral("UNIX_TIMESTAMP(NOW())")},
 					).
@@ -598,42 +598,42 @@ func TestUpdateScenarios(t *testing.T) {
 		},
 		{
 			// TestUpdateAssignments: Incr / Decr / Add / Sub / Mul / Div.
-			// sqlk exposes Increment (Incr/Add) and Decrement (Decr/Sub);
+			// sqlk exposes AsIncrement (Incr/Add) and AsDecrement (Decr/Sub);
 			// Mul and Div have no verb and are expressed as raw set values.
 			name:  "increment defaults to one",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").Increment("f") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").AsIncrement("f") },
 			sql:   `UPDATE "t" SET "f" = "f" + ?`,
 			args:  []any{1},
 		},
 		{
 			name:  "decrement defaults to one",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").Decrement("f") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").AsDecrement("f") },
 			sql:   `UPDATE "t" SET "f" = "f" - ?`,
 			args:  []any{1},
 		},
 		{
 			name:  "add with amount",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").Increment("f", 123) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").AsIncrement("f", 123) },
 			sql:   `UPDATE "t" SET "f" = "f" + ?`,
 			args:  []any{123},
 		},
 		{
 			name:  "sub with amount",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").Decrement("f", 123) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("t").AsDecrement("f", 123) },
 			sql:   `UPDATE "t" SET "f" = "f" - ?`,
 			args:  []any{123},
 		},
 		{
 			name: "mul as a raw set expression",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").UpdateColumns([]string{"f"}, []any{sqlk.NewUnsafeLiteral("f * 123")})
+				return q.From("t").AsUpdateColumns([]string{"f"}, []any{sqlk.NewUnsafeLiteral("f * 123")})
 			},
 			sql: `UPDATE "t" SET "f" = f * 123`,
 		},
 		{
 			name: "div as a raw set expression",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").UpdateColumns([]string{"f"}, []any{sqlk.NewUnsafeLiteral("f / 123")})
+				return q.From("t").AsUpdateColumns([]string{"f"}, []any{sqlk.NewUnsafeLiteral("f / 123")})
 			},
 			sql: `UPDATE "t" SET "f" = f / 123`,
 		},
@@ -644,7 +644,7 @@ func TestUpdateScenarios(t *testing.T) {
 			// shape drops them — a faithful rendering of sqlk's behavior.
 			name: "update with where drops order and limit",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("user").WhereEq("status", 1).Update(sqlk.Record{"name": "Test"}).OrderBy("id").Limit(5)
+				return q.From("user").WhereEq("status", 1).AsUpdate(sqlk.Record{"name": "Test"}).OrderBy("id").Limit(5)
 			},
 			sql:  `UPDATE "user" SET "name" = ? WHERE "status" = ?`,
 			args: []any{"Test", 1},
@@ -662,9 +662,11 @@ func TestDeleteScenarios(t *testing.T) {
 			// ExampleDeleteFrom: a raw where with a limit. sqlk's DELETE
 			// compiler does not carry LIMIT into the statement (unlike
 			// go-sqlbuilder's mysql flavor), so the migrated shape drops it.
-			name:  "delete with raw where drops limit",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("demo.user").WhereRaw("status = 1").Limit(10).Delete() },
-			sql:   `DELETE FROM "demo"."user" WHERE status = 1`,
+			name: "delete with raw where drops limit",
+			build: func(q *sqlk.Query) *sqlk.Query {
+				return q.From("demo.user").WhereRaw("status = 1").Limit(10).AsDelete()
+			},
+			sql: `DELETE FROM "demo"."user" WHERE status = 1`,
 		},
 		{
 			// ExampleDeleteBuilder: a where section mirroring the select.
@@ -677,7 +679,7 @@ func TestDeleteScenarios(t *testing.T) {
 						return n.WhereNull("id_card").OrWhereIn("status", 1, 2, 5)
 					}).
 					WhereRaw("modified_at > created_at + ?", 86400).
-					Delete()
+					AsDelete()
 			},
 			sql:  `DELETE FROM "demo"."user" WHERE "id" > ? AND "name" like ? AND ("id_card" IS NULL OR "status" IN (?, ?, ?)) AND modified_at > created_at + ?`,
 			args: []any{1234, "%Du", 1, 2, 5, 86400},
@@ -687,7 +689,7 @@ func TestDeleteScenarios(t *testing.T) {
 			// UPDATE, sqlk's DELETE compiler drops ORDER BY and LIMIT.
 			name: "delete with where drops order and limit",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("user").WhereEq("status", 1).OrderBy("id").Limit(5).Delete()
+				return q.From("user").WhereEq("status", 1).OrderBy("id").Limit(5).AsDelete()
 			},
 			sql:  `DELETE FROM "user" WHERE "status" = ?`,
 			args: []any{1},
@@ -742,7 +744,7 @@ func TestCTEScenarios(t *testing.T) {
 			name: "cte driving an update",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.With("users", sqlk.NewQuery().Select("user_id").From("vip_users")).
-					From("orders").UpdateColumns([]string{"transport_fee"}, []any{sqlk.NewUnsafeLiteral("0")}).
+					From("orders").AsUpdateColumns([]string{"transport_fee"}, []any{sqlk.NewUnsafeLiteral("0")}).
 					WhereRaw("users.user_id = orders.user_id")
 			},
 			sql: `WITH "users" AS (SELECT "user_id" FROM "vip_users")` + "\n" +
@@ -753,7 +755,7 @@ func TestCTEScenarios(t *testing.T) {
 			name: "cte driving a delete",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.With("users", sqlk.NewQuery().Select("user_id").From("cheaters")).
-					From("awards").WhereRaw("users.user_id = awards.user_id").Delete()
+					From("awards").WhereRaw("users.user_id = awards.user_id").AsDelete()
 			},
 			sql: `WITH "users" AS (SELECT "user_id" FROM "cheaters")` + "\n" +
 				`DELETE FROM "awards" WHERE users.user_id = awards.user_id`,
@@ -811,7 +813,7 @@ func TestCombineScenarios(t *testing.T) {
 			name: "union all with main query pagination",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.Select("id", "name", "created_at").From("demo.user").Where("id", ">", 1234).
-					UnionAll(sqlk.NewQuery().From("demo.user_profile")).
+					UnionAll(sqlk.NewQuery("demo.user_profile")).
 					OrderBy("created_at").Limit(100).Offset(5)
 			},
 			sql:  `SELECT "id", "name", "created_at" FROM "demo"."user" WHERE "id" > ? ORDER BY "created_at" LIMIT ? OFFSET ? UNION ALL SELECT * FROM "demo"."user_profile"`,
@@ -819,12 +821,12 @@ func TestCombineScenarios(t *testing.T) {
 		},
 		{
 			name:  "except",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Except(sqlk.NewQuery().From("b")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Except(sqlk.NewQuery("b")) },
 			sql:   `SELECT * FROM "a" EXCEPT SELECT * FROM "b"`,
 		},
 		{
 			name:  "intersect all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").IntersectAll(sqlk.NewQuery().From("b")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").IntersectAll(sqlk.NewQuery("b")) },
 			sql:   `SELECT * FROM "a" INTERSECT ALL SELECT * FROM "b"`,
 		},
 		{
@@ -846,32 +848,32 @@ func TestAggregateScenarios(t *testing.T) {
 	runCompileCases(t, compiler.New(), []compileCase{
 		{
 			name:  "count star",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsCount() },
 			sql:   `SELECT COUNT(*) AS "count" FROM "a"`,
 		},
 		{
 			name:  "count column",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Count("user_id") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsCount("user_id") },
 			sql:   `SELECT COUNT("user_id") AS "count" FROM "a"`,
 		},
 		{
 			name:  "sum",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Sum("total") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsSum("total") },
 			sql:   `SELECT SUM("total") AS "sum" FROM "a"`,
 		},
 		{
 			name:  "avg",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Avg("ttl") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsAvg("ttl") },
 			sql:   `SELECT AVG("ttl") AS "avg" FROM "a"`,
 		},
 		{
 			name:  "max",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Max("latency") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsMax("latency") },
 			sql:   `SELECT MAX("latency") AS "max" FROM "a"`,
 		},
 		{
 			name:  "min",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").Min("latency") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("a").AsMin("latency") },
 			sql:   `SELECT MIN("latency") AS "min" FROM "a"`,
 		},
 		{
@@ -1010,7 +1012,7 @@ func TestLimitOffsetMatrix(t *testing.T) {
 // plain insert (return-id is a no-op flag without a dialect last-id).
 func TestLastIdMatrix(t *testing.T) {
 	build := func(q *sqlk.Query) *sqlk.Query {
-		return q.From("user").InsertReturnId(sqlk.Record{"name": "Huan Du"})
+		return q.From("user").AsInsertReturnId(sqlk.Record{"name": "Huan Du"})
 	}
 	runDialectCases(t, []dialectCase{
 		{
@@ -1074,7 +1076,7 @@ func TestOracleInsertAll(t *testing.T) {
 		{
 			name: "multi-row insert all",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").InsertRows([]string{"id", "name", "status"},
+				return q.From("demo.user").AsInsertRows([]string{"id", "name", "status"},
 					[]any{1, "Huan Du", 1}, []any{2, "Charmy Liu", 1})
 			},
 			sql:  `INSERT ALL INTO "demo"."user" ("id", "name", "status") VALUES (?, ?, ?) INTO "demo"."user" ("id", "name", "status") VALUES (?, ?, ?) SELECT 1 FROM DUAL`,
@@ -1084,7 +1086,7 @@ func TestOracleInsertAll(t *testing.T) {
 			// A single-row insert keeps the base shape.
 			name: "single-row insert keeps base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("demo.user").InsertRows([]string{"id", "name", "status"}, []any{1, "Huan Du", 1})
+				return q.From("demo.user").AsInsertRows([]string{"id", "name", "status"}, []any{1, "Huan Du", 1})
 			},
 			sql:  `INSERT INTO "demo"."user" ("id", "name", "status") VALUES (?, ?, ?)`,
 			args: []any{1, "Huan Du", 1},
@@ -1103,7 +1105,7 @@ func TestMysqlDeleteJoin(t *testing.T) {
 				return q.From("posts").
 					Join("authors", "authors.id", "=", "posts.author_id").
 					WhereEq("authors.id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  "DELETE `posts` FROM `posts` \nINNER JOIN `authors` ON `authors`.`id` = `posts`.`author_id` WHERE `authors`.`id` = ?",
 			args: []any{5},
@@ -1114,14 +1116,14 @@ func TestMysqlDeleteJoin(t *testing.T) {
 				return q.From("posts as p").
 					Join("authors", "authors.id", "=", "p.author_id").
 					WhereEq("authors.id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  "DELETE `p` FROM `posts` AS `p` \nINNER JOIN `authors` ON `authors`.`id` = `p`.`author_id` WHERE `authors`.`id` = ?",
 			args: []any{5},
 		},
 		{
 			name:  "delete without join keeps the base shape",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("posts").WhereEq("id", 7).Delete() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("posts").WhereEq("id", 7).AsDelete() },
 			sql:   "DELETE FROM `posts` WHERE `id` = ?",
 			args:  []any{7},
 		},
@@ -1243,14 +1245,14 @@ func TestWhereClauseScenarios(t *testing.T) {
 		{
 			// ExampleWhereClause: the UPDATE shape (increment with where).
 			name:  "where shape on update",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("users").Increment("level", 10).WhereEq("id", 1234) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("users").AsIncrement("level", 10).WhereEq("id", 1234) },
 			sql:   `UPDATE "users" SET "level" = "level" + ? WHERE "id" = ?`,
 			args:  []any{10, 1234},
 		},
 		{
 			// ExampleWhereClause_clearWhereClause: the DELETE shape.
 			name:  "where shape on delete",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("users").WhereEq("id", 1234).Delete() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("users").WhereEq("id", 1234).AsDelete() },
 			sql:   `DELETE FROM "users" WHERE "id" = ?`,
 			args:  []any{1234},
 		},
@@ -1259,7 +1261,7 @@ func TestWhereClauseScenarios(t *testing.T) {
 			// itself carries a where.
 			name: "nested not in subquery in where",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").WhereNotInSub("id", sqlk.NewQuery().From("t").WhereEq("id", 123))
+				return q.From("t").WhereNotInSub("id", sqlk.NewQuery("t").WhereEq("id", 123))
 			},
 			sql:  `SELECT * FROM "t" WHERE "id" NOT IN (SELECT * FROM "t" WHERE "id" = ?)`,
 			args: []any{123},

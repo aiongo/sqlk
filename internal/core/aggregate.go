@@ -3,8 +3,8 @@ package core
 import "slices"
 
 // Aggregate shapes: rewriting the query as an aggregate
-// (Count/Sum/Avg/Min/Max) and aggregate projection columns (SelectCount,
-// SelectSum, and friends, each with an optional filter scope).
+// (AsCount/AsSum/AsAvg/AsMin/AsMax) and aggregate projection columns
+// (SelectCount, SelectSum, and friends, each with an optional filter scope).
 
 // AggregateClause rewrites the query as an aggregate: the aggregate function
 // type and the target columns. A query carrying this clause is in aggregate
@@ -30,40 +30,40 @@ func (c *AggregateClause) Clone() Clause {
 	return &clone
 }
 
-// Aggregate rewrites the query as an aggregate of the given type; repeated
+// AsAggregate rewrites the query as an aggregate of the given type; repeated
 // calls keep the last one.
-func (q *Query) Aggregate(aggType string, columns ...string) *Query {
+func (q *Query) AsAggregate(aggType string, columns ...string) *Query {
 	q.setOrReplace(NewAggregateClause(aggType, columns))
 	return q
 }
 
-// Count rewrites the query as a COUNT aggregate; with no column given, the
+// AsCount rewrites the query as a COUNT aggregate; with no column given, the
 // target is *.
-func (q *Query) Count(columns ...string) *Query {
+func (q *Query) AsCount(columns ...string) *Query {
 	if len(columns) == 0 {
 		columns = []string{"*"}
 	}
-	return q.Aggregate("count", columns...)
+	return q.AsAggregate("count", columns...)
 }
 
-// Sum rewrites the query as a SUM aggregate.
-func (q *Query) Sum(column string) *Query {
-	return q.Aggregate("sum", column)
+// AsSum rewrites the query as a SUM aggregate.
+func (q *Query) AsSum(column string) *Query {
+	return q.AsAggregate("sum", column)
 }
 
-// Avg rewrites the query as an AVG aggregate.
-func (q *Query) Avg(column string) *Query {
-	return q.Aggregate("avg", column)
+// AsAvg rewrites the query as an AVG aggregate.
+func (q *Query) AsAvg(column string) *Query {
+	return q.AsAggregate("avg", column)
 }
 
-// Min rewrites the query as a MIN aggregate.
-func (q *Query) Min(column string) *Query {
-	return q.Aggregate("min", column)
+// AsMin rewrites the query as a MIN aggregate.
+func (q *Query) AsMin(column string) *Query {
+	return q.AsAggregate("min", column)
 }
 
-// Max rewrites the query as a MAX aggregate.
-func (q *Query) Max(column string) *Query {
-	return q.Aggregate("max", column)
+// AsMax rewrites the query as a MAX aggregate.
+func (q *Query) AsMax(column string) *Query {
+	return q.AsAggregate("max", column)
 }
 
 // AggregateColumnClause declares an aggregate projection column: an
@@ -193,7 +193,7 @@ func TransformAggregate(q *Query, engine string) *Query {
 	}
 
 	outer := NewQuery()
-	outer.Aggregate(agg.Type, "*")
+	outer.AsAggregate(agg.Type, "*")
 	out.alias = agg.Type + "Query"
 	outer.setOrReplace(NewQueryFrom(out))
 	return outer

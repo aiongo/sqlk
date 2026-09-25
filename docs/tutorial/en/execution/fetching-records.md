@@ -17,7 +17,7 @@ All of them take `context.Context` as their first argument, so timeouts and canc
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
 
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -32,7 +32,7 @@ The example above is the one from the [introduction](../index.md) and runs again
 Use `First[T]` or `FirstOrDefault[T]` to get the first record of the query.
 
 ```go
-post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
+post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 ```
 
 > **Note:** `First` and `FirstOrDefault` add the `Limit(1)` clause implicitly to the query, so there is no need to add it by yourself.
@@ -40,22 +40,22 @@ post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
 When no row matches, `First` returns a distinguishable error — it is `sql.ErrNoRows`, also exposed as `exec.ErrNoRows`:
 
 ```go
-_, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+_, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 errors.Is(err, exec.ErrNoRows) // true
 ```
 
 `FirstOrDefault` treats the missing row as a non-error and returns the zero value:
 
 ```go
-missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 // missing == Post{} , err == nil
 ```
 
 ## Lightweight existence checks
 
 ```go
-exists, err := db.Exists(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "fr"))
-missing, err := db.NotExist(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "de"))
+exists, err := db.Exists(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "fr"))
+missing, err := db.NotExist(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "de"))
 ```
 
 ## Data Pagination
@@ -63,10 +63,10 @@ missing, err := db.NotExist(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "
 To paginate your data, use `Paginate[T](page, perPage)` instead of `Get`. It returns a `PaginationResult[T]` carrying the total count, the current page number, the per-page size, and the page's `List`.
 
 ```go
-page1, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 1, 2)
+page1, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 1, 2)
 // page1.Total == 3, len(page1.List) == 2, page1.HasMore() == true
 
-page2, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2, 2)
+page2, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2, 2)
 // len(page2.List) == 1, page2.HasMore() == false
 ```
 
@@ -77,7 +77,7 @@ page2, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id")
 Sometimes you may want to retrieve data in chunks to prevent loading the whole table into memory at once; for this you can use the `Chunk` iterator.
 
 ```go
-for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2) {
+for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2) {
     if err != nil {
         break // the iterator also terminates after yielding an error
     }
@@ -94,8 +94,8 @@ Chunks are fetched lazily, page by page; break out of the loop to stop early.
 The generic aggregate methods execute an aggregate form of the query and scan the scalar straight into your number:
 
 ```go
-count, err := db.Count[int64](ctx, sqlk.NewQuery().From("Posts")) // 3
-sum, err := db.Sum[int64](ctx, sqlk.NewQuery().From("Posts"), "Likes") // 75
+count, err := db.Count[int64](ctx, sqlk.NewQuery("Posts")) // 3
+sum, err := db.Sum[int64](ctx, sqlk.NewQuery("Posts"), "Likes") // 75
 ```
 
 `Avg[T]`, `Min[T]` and `Max[T]` work the same way.

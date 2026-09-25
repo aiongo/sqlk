@@ -140,7 +140,7 @@ func TestSqliteLastId(t *testing.T) {
 			// A return-id INSERT appends a last_insert_rowid statement.
 			name: "insert return id appends last_insert_rowid",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?);select last_insert_rowid() as id`,
 			args: []any{"x"},
@@ -148,7 +148,7 @@ func TestSqliteLastId(t *testing.T) {
 		{
 			name: "plain insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").Insert(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsert(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?)`,
 			args: []any{"x"},
@@ -156,7 +156,7 @@ func TestSqliteLastId(t *testing.T) {
 		{
 			name: "multi-row insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
+				return q.From("Users").AsInsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?), (?)`,
 			args: []any{"x", "y"},
@@ -213,13 +213,13 @@ func TestSqliteEngineLoopPorts(t *testing.T) {
 		},
 		{
 			name:  "union",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Union(sqlk.NewQuery().From("Laptops")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Union(sqlk.NewQuery("Laptops")) },
 			sql:   `SELECT * FROM "Phones" UNION SELECT * FROM "Laptops"`,
 		},
 		{
 			name: "union with bindings",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Phones").Union(sqlk.NewQuery().From("Laptops").WhereEq("Type", "A"))
+				return q.From("Phones").Union(sqlk.NewQuery("Laptops").WhereEq("Type", "A"))
 			},
 			sql:  `SELECT * FROM "Phones" UNION SELECT * FROM "Laptops" WHERE "Type" = ?`,
 			args: []any{"A"},
@@ -253,8 +253,8 @@ func TestSqliteBuildSurface(t *testing.T) {
 			name: "cte precedes and combine follows",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("a").
-					With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).
-					UnionAll(sqlk.NewQuery().From("b"))
+					With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).
+					UnionAll(sqlk.NewQuery("b"))
 			},
 			sql:  "WITH \"t\" AS (SELECT * FROM \"src\" WHERE \"Ok\" = ?)\nSELECT * FROM \"a\" UNION ALL SELECT * FROM \"b\"",
 			args: []any{1},
@@ -262,7 +262,7 @@ func TestSqliteBuildSurface(t *testing.T) {
 		{
 			name: "aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Active", true).Count()
+				return q.From("A").WhereEq("Active", true).AsCount()
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM "A" WHERE "Active" = ?`,
 			args: []any{true},
@@ -270,7 +270,7 @@ func TestSqliteBuildSurface(t *testing.T) {
 		{
 			name: "update and delete keep the base shapes",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Update(sqlk.Record{"Name": "x"})
+				return q.From("Users").WhereEq("Id", 1).AsUpdate(sqlk.Record{"Name": "x"})
 			},
 			sql:  `UPDATE "Users" SET "Name" = ? WHERE "Id" = ?`,
 			args: []any{"x", 1},
@@ -278,7 +278,7 @@ func TestSqliteBuildSurface(t *testing.T) {
 		{
 			name: "delete keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Delete()
+				return q.From("Users").WhereEq("Id", 1).AsDelete()
 			},
 			sql:  `DELETE FROM "Users" WHERE "Id" = ?`,
 			args: []any{1},

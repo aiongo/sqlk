@@ -8,7 +8,7 @@ sqlk 提供 `WhereStarts`、`WhereEnds`、`WhereContains` 与 `WhereLike` 方法
 
 
 ```go
-sqlk.NewQuery().From("Posts").WhereEnds("Title", "Book")
+sqlk.NewQuery("Posts").WhereEnds("Title", "Book")
 ```
 
 ```sql
@@ -20,7 +20,7 @@ args: `["%book"]`
 使用大小写敏感选项
 
 ```go
-sqlk.NewQuery().From("Posts").WhereStarts("Title", "Book", sqlk.CaseSensitive())
+sqlk.NewQuery("Posts").WhereStarts("Title", "Book", sqlk.CaseSensitive())
 ```
 
 ```sql
@@ -32,7 +32,7 @@ args: `["Book%"]`
 使用原生 `WhereLike` 方法
 
 ```go
-sqlk.NewQuery().From("Posts").WhereLike("Title", "Book")
+sqlk.NewQuery("Posts").WhereLike("Title", "Book")
 ```
 
 ```sql
@@ -54,7 +54,7 @@ args: `["Book"]`
 所有 LIKE 查询还可以用 `sqlk.EscapeLike` 选项追加可选的转义子句:
 
 ```go
-sqlk.NewQuery().From("Posts").WhereLike("Title", `%The \% Sign%`, sqlk.EscapeLike(`\`))
+sqlk.NewQuery("Posts").WhereLike("Title", `%The \% Sign%`, sqlk.EscapeLike(`\`))
 ```
 
 PostgreSql 中

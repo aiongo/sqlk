@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// Write verb clause family: Insert/Update/Delete switch the query into its
+// Write verb clause family: AsInsert/AsUpdate/AsDelete switch the query into its
 // write shape (recorded by method) and compile to INSERT/UPDATE/DELETE
 // statements (see the compiler subpackage's write.go). Shape problems --
 // empty columns, empty values, mismatched column/value counts -- are
@@ -105,7 +105,7 @@ func (c *UpdateSetClause) Clone() Clause {
 
 // IncrementClause declares a numeric step: a single column increased (or,
 // with a negative value, decreased) by an amount, compiled as
-// "SET column = column + ?". Decrement is expressed as a negative value.
+// "SET column = column + ?". AsDecrement is expressed as a negative value.
 type IncrementClause struct {
 	Base
 	Column string
@@ -161,40 +161,40 @@ const (
 	MethodDelete Method = "delete"
 )
 
-// Insert switches the query to a single-row INSERT, with columns and values
+// AsInsert switches the query to a single-row INSERT, with columns and values
 // expressed as key-value pairs: keys are processed in sorted order so
 // compiled output is deterministic (Go map iteration order is random, and
 // column order does not affect write semantics). Empty data is reported at
 // the compile entry point. Repeated calls keep the last one within the same
 // engine scope (write clauses stamped for different dialects by For never
 // displace each other; the same holds below).
-func (q *Query) Insert(data Record) *Query {
+func (q *Query) AsInsert(data Record) *Query {
 	columns, values := columnsValuesFromMap(data)
 	return q.insertClause(NewInsertClause(columns, values, false))
 }
 
-// InsertReturnId is the auto-increment-fetching form of Insert: the
+// AsInsertReturnId is the auto-increment-fetching form of Insert: the
 // returnId flag makes dialects that support it append a LastId statement
 // after the query (the base compiler emits none).
-func (q *Query) InsertReturnId(data Record) *Query {
+func (q *Query) AsInsertReturnId(data Record) *Query {
 	columns, values := columnsValuesFromMap(data)
 	return q.insertClause(NewInsertClause(columns, values, true))
 }
 
-// InsertColumns switches the query to a single-row INSERT, with columns
+// AsInsertColumns switches the query to a single-row INSERT, with columns
 // expressed as a column set plus values ordered by column; empty or
 // mismatched columns/values are reported at the compile entry point.
 // Repeated calls keep the last one within the same scope.
-func (q *Query) InsertColumns(columns []string, values []any) *Query {
+func (q *Query) AsInsertColumns(columns []string, values []any) *Query {
 	return q.insertClause(NewInsertClause(columns, values, false))
 }
 
-// InsertRows switches the query to a multi-row INSERT: one shared column
+// AsInsertRows switches the query to a multi-row INSERT: one shared column
 // set, each row supplying values ordered by column, compiled as a single
 // INSERT with several VALUES groups. Missing rows, or a row whose value
 // count differs from the column count, are reported at the compile entry
 // point.
-func (q *Query) InsertRows(columns []string, rows ...[]any) *Query {
+func (q *Query) AsInsertRows(columns []string, rows ...[]any) *Query {
 	q.method = MethodInsert
 	q.dropClausesInScope(Insert)
 	for _, row := range rows {
@@ -203,11 +203,11 @@ func (q *Query) InsertRows(columns []string, rows ...[]any) *Query {
 	return q
 }
 
-// InsertFrom switches the query to an INSERT FROM query (insert into
+// AsInsertFrom switches the query to an INSERT FROM query (insert into
 // select): the column set may be empty (in which case no column list is
 // produced), and the subquery is deep-copied on embedding. Repeated calls
 // keep the last one within the same scope.
-func (q *Query) InsertFrom(columns []string, sub *Query) *Query {
+func (q *Query) AsInsertFrom(columns []string, sub *Query) *Query {
 	q.method = MethodInsert
 	q.dropClausesInScope(Insert)
 	q.addClause(NewInsertQueryClause(columns, sub))
@@ -249,20 +249,20 @@ func columnsValuesFromMap(data Record) ([]string, []any) {
 	return columns, values
 }
 
-// Update switches the query to an UPDATE, with the assignment set expressed
+// AsUpdate switches the query to an UPDATE, with the assignment set expressed
 // as key-value pairs: keys are processed in sorted order so compiled output
 // is deterministic. Empty data is reported at the compile entry point.
-// Repeated calls keep the last one within the same scope (`Increment`/
-// `Decrement` are replaced too).
-func (q *Query) Update(data Record) *Query {
+// Repeated calls keep the last one within the same scope (`AsIncrement`/
+// `AsDecrement` are replaced too).
+func (q *Query) AsUpdate(data Record) *Query {
 	columns, values := columnsValuesFromMap(data)
 	return q.updateSet(NewUpdateSet(columns, values))
 }
 
-// UpdateColumns switches the query to an UPDATE, with the assignment set
+// AsUpdateColumns switches the query to an UPDATE, with the assignment set
 // expressed as a column set plus new values ordered by column; empty or
 // mismatched columns/values are reported at the compile entry point.
-func (q *Query) UpdateColumns(columns []string, values []any) *Query {
+func (q *Query) AsUpdateColumns(columns []string, values []any) *Query {
 	return q.updateSet(NewUpdateSet(columns, values))
 }
 
@@ -275,16 +275,16 @@ func (q *Query) updateSet(set *UpdateSetClause) *Query {
 	return q
 }
 
-// Increment switches the query to an UPDATE in numeric-step form: column
+// AsIncrement switches the query to an UPDATE in numeric-step form: column
 // increased by amount (default 1), compiled as "SET column = column + ?".
 // It replaces any existing update clause.
-func (q *Query) Increment(column string, amount ...int) *Query {
+func (q *Query) AsIncrement(column string, amount ...int) *Query {
 	return q.incrementBy(column, firstOr(amount, 1))
 }
 
-// Decrement is the decreasing form of Increment: column decreased by amount
+// AsDecrement is the decreasing form of Increment: column decreased by amount
 // (default 1), compiled as "SET column = column - ?".
-func (q *Query) Decrement(column string, amount ...int) *Query {
+func (q *Query) AsDecrement(column string, amount ...int) *Query {
 	return q.incrementBy(column, -firstOr(amount, 1))
 }
 
@@ -305,10 +305,10 @@ func firstOr(values []int, fallback int) int {
 	return fallback
 }
 
-// Delete switches the query to a DELETE: the from target is the table to
+// AsDelete switches the query to a DELETE: the from target is the table to
 // delete from, with WHERE/JOIN clauses carried by the query (the joined
 // delete form and dialect differences are handled by the compiler).
-func (q *Query) Delete() *Query {
+func (q *Query) AsDelete() *Query {
 	q.method = MethodDelete
 	return q
 }

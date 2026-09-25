@@ -10,7 +10,7 @@
 sqlk 提供单一 fluent `Query` 类型承载全部动词(select / insert / update / delete)、按方言把查询编译为参数化 SQL 的编译器、基于 [sqlx](https://github.com/jmoiron/sqlx) 的轻量执行层,以及面向不可信调用方的 JSON 查询线协议,全部在同一套风格下协同:
 
 ```go
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -38,7 +38,7 @@ import (
     "github.com/aiongo/sqlk/compiler"
 )
 
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -71,13 +71,13 @@ db := exec.New(sqlxDB, compiler.NewSqlite())
 
 // 扫描进你的类型 —— Get[T]、First[T]、FirstOrDefault[T]、
 // Paginate[T]、Chunk[T]、Exists、Count[T]、Sum[T] 等
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     WhereEq("Lang", "en").
     OrderByDesc("Date").
     Limit(10))
 
-// 写路径 —— Exec 与 InsertGetId;Increment / Decrement 是查询动词,走同一条 Exec 路径
-id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"),
+// 写路径 —— Exec 与 InsertGetId;AsIncrement / AsDecrement 是查询动词,走同一条 Exec 路径
+id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"),
     sqlk.Record{"Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01"})
 ```
 
@@ -113,7 +113,7 @@ res.Args // ["en", "Go%", 10]
 
 ## 特性
 
-- 单一 fluent 构建器:单一 `Query` 类型承载 select / insert / update / delete 与 Count/Sum/Avg/Min/Max 聚合形态;CTE(`With`)、集合运算(`Union` / `Intersect` / `Except`)、嵌套条件组、子查询、引擎作用域、查询变量、`When`/`Clone` 辅助。
+- 单一 fluent 构建器:单一 `Query` 类型承载 select / insert / update / delete 与 AsCount/AsSum/AsAvg/AsMin/AsMax 聚合形态;CTE(`With`)、集合运算(`Union` / `Intersect` / `Except`)、嵌套条件组、子查询、引擎作用域、查询变量、`When`/`Clone` 辅助。
 - 五种方言:Sql Server、PostgreSQL、MySql、Oracle、SQLite。标识符包裹、分页、取自增 ID 等语义以 SqlKata 各方言编译器为基准。
 - 注入安全是构造出来的:操作符经白名单校验、值全部参数绑定、标识符由编译器包裹;唯一的逃生口(`UnsafeLiteral`)显式且醒目。
 - 基于 sqlx 的执行层:泛型扫描(`Get[T]`、`First[T]`、`Paginate[T]`、`Chunk[T]`、标量聚合)、`InsertGetId`、DB/Tx 同构句柄、`context.Context` 贯穿、可选编译日志。

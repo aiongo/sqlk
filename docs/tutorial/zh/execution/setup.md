@@ -20,7 +20,7 @@ sqlDB, err := sql.Open("mysql", "user:secret@tcp(localhost:3306)/Users")
 sqlxDB := sqlx.NewDb(sqlDB, "mysql")
 db := exec.New(sqlxDB, compiler.NewMysql())
 
-users, err := db.Get[User](ctx, sqlk.NewQuery().From("Users").Limit(10))
+users, err := db.Get[User](ctx, sqlk.NewQuery("Users").Limit(10))
 ```
 
 查询用根包的 `sqlk.NewQuery()` 构建,与构建器各章完全一致——构建与执行严格分离,没有「可执行查询」子类。
@@ -51,7 +51,7 @@ return tx.Commit()
 
 ```go
 func loadCars(ctx context.Context, x *exec.Executor) ([]Car, error) {
-    return x.Get[Car](ctx, sqlk.NewQuery().From("Cars"))
+    return x.Get[Car](ctx, sqlk.NewQuery("Cars"))
 }
 
 cars, err := loadCars(ctx, db.Executor) // db *exec.DB

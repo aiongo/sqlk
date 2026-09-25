@@ -19,29 +19,29 @@ type Number interface {
 // scalar; with no columns it counts all rows (COUNT(*)), with a column it
 // counts non-NULL values of that column (e.g. Count(ctx, q, "Color")).
 func (x *Executor) Count[T Number](ctx context.Context, q *sqlk.Query, columns ...string) (T, error) {
-	return x.scanOne[T](ctx, q.Clone().Count(columns...))
+	return x.scanOne[T](ctx, q.Clone().AsCount(columns...))
 }
 
 // Sum rewrites a copy of the query as a SUM aggregate and scans back the
 // scalar.
 func (x *Executor) Sum[T Number](ctx context.Context, q *sqlk.Query, column string) (T, error) {
-	return x.scanOne[T](ctx, q.Clone().Sum(column))
+	return x.scanOne[T](ctx, q.Clone().AsSum(column))
 }
 
 // Avg rewrites a copy of the query as an AVG aggregate and scans back the
 // scalar.
 func (x *Executor) Avg[T Number](ctx context.Context, q *sqlk.Query, column string) (T, error) {
-	return x.scanOne[T](ctx, q.Clone().Avg(column))
+	return x.scanOne[T](ctx, q.Clone().AsAvg(column))
 }
 
 // Min rewrites a copy of the query as a MIN aggregate and scans back the
 // scalar; T may be any comparable type, not just a number (e.g. string).
 func (x *Executor) Min[T any](ctx context.Context, q *sqlk.Query, column string) (T, error) {
-	return x.scanOne[T](ctx, q.Clone().Min(column))
+	return x.scanOne[T](ctx, q.Clone().AsMin(column))
 }
 
 // Max rewrites a copy of the query as a MAX aggregate and scans back the
 // scalar; T may be any comparable type, not just a number (e.g. string).
 func (x *Executor) Max[T any](ctx context.Context, q *sqlk.Query, column string) (T, error) {
-	return x.scanOne[T](ctx, q.Clone().Max(column))
+	return x.scanOne[T](ctx, q.Clone().AsMax(column))
 }

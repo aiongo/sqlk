@@ -5,7 +5,7 @@
 Sometimes you need to do some actions only when certain conditions are met. In these cases you can use the `When(condition, fn)` verb; the inverse branch is `WhenNot`.
 
 ```go
-query := sqlk.NewQuery().From("Transactions")
+query := sqlk.NewQuery("Transactions")
 
 amount := 100
 
@@ -18,7 +18,7 @@ query.When(amount > 0,
 is the same as
 
 ```go
-query := sqlk.NewQuery().From("Transactions")
+query := sqlk.NewQuery("Transactions")
 
 if amount > 0 {
     query.Select("Debit as Amount")
@@ -50,7 +50,7 @@ This is helpful when you want to apply some native functions that are available 
 ### Casting Example
 
 ```go
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     Select("Id", "Title").
     For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("[Date]::date") }).
     For(sqlk.EngineSqlserver, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("CAST([Date] as DATE)") })
@@ -123,7 +123,7 @@ Of course you can use any verb you want inside these callbacks.
 The `Comment` verb prefixes the statement with a database-side comment, useful to trace slow queries back to their origin.
 
 ```go
-sqlk.NewQuery().From("Users").Comment("trace: load users").Limit(10)
+sqlk.NewQuery("Users").Comment("trace: load users").Limit(10)
 ```
 
 ```sql
@@ -137,7 +137,7 @@ sqlk.NewQuery().From("Users").Comment("trace: load users").Limit(10)
 ```go
 since := time.Date(2017, 8, 1, 0, 0, 0, 0, time.UTC)
 
-sqlk.NewQuery().From("Posts").
+sqlk.NewQuery("Posts").
     Define("since", since).
     WhereDate("CreatedAt", ">=", sqlk.NewVariable("since"))
 ```
@@ -155,7 +155,7 @@ args: `[2017-08-01 00:00:00 +0000 UTC]`
 `sqlk.NewUnsafeLiteral(text)` inlines trusted text directly into the SQL instead of binding it as a parameter, the explicit escape hatch for things that cannot be parameterized (function calls, column name fragments). Never feed it user input.
 
 ```go
-sqlk.NewQuery().From("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()"))
+sqlk.NewQuery("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()"))
 ```
 
 ```sql

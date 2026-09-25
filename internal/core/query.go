@@ -45,13 +45,20 @@ type Query struct {
 	comment  string
 }
 
-// NewQuery returns an empty query; it is the entry point for building.
-func NewQuery() *Query {
+// NewQuery returns an empty query; it is the entry point for building. The
+// optional table argument is the constructor form of From: NewQuery("Users")
+// equals NewQuery() followed by From("Users"). Like the other optional
+// single values (AsIncrement, ForPage), the first argument wins and extras
+// are ignored.
+func NewQuery(table ...string) *Query {
 	q := new(Query)
 	q.conditionFace.self = q
 	q.conditionFace.component = Where
 	q.havingFace.self = q
 	q.havingFace.component = Having
+	if len(table) > 0 {
+		q.setOrReplace(NewFrom(table[0]))
+	}
 	return q
 }
 

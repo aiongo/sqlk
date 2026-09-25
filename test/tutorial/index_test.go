@@ -13,7 +13,7 @@ import (
 func TestCompileOnly(t *testing.T) {
 	// No connection needed: build and compile to placeholder SQL plus an
 	// ordered argument list.
-	query := sqlk.NewQuery().From("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
+	query := sqlk.NewQuery("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
 
 	res, err := compiler.NewSqlserver().Compile(query)
 	if err != nil {

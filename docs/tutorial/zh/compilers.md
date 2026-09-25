@@ -20,7 +20,7 @@ sqlk 原生支持以下方言,各方言一个构造函数:
 理论上不同编译器的输出应当相似,80% 的场景确实如此;但在一些边界场景,输出可能差异很大。比如看看各方言如何编译 `Limit` 与 `Offset` 子句
 
 ```go
-sqlk.NewQuery().From("Posts").Limit(10).Offset(20)
+sqlk.NewQuery("Posts").Limit(10).Offset(20)
 ```
 
 Sql Server
@@ -76,7 +76,7 @@ args: `[30, 20]`
 ```go
 comp := compiler.NewPostgres().Whitelist("&&", "||")
 
-sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family", "outdoor"})
+sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family", "outdoor"})
 ```
 
 ```sql
@@ -87,7 +87,7 @@ SELECT * FROM "Trips" WHERE "Tags" && ?
 
 ```go
 _, err := compiler.NewPostgres().Compile(
-    sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family"}))
+    sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family"}))
 errors.Is(err, compiler.ErrOperatorNotAllowed) // true
 ```
 

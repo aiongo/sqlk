@@ -245,7 +245,7 @@ func TestGoquWhereOperators(t *testing.T) {
 // TestGoquInBetweenConditions covers set membership over value lists and
 // subqueries, and BETWEEN ranges over numbers and strings.
 func TestGoquInBetweenConditions(t *testing.T) {
-	sub := sqlk.NewQuery().From("test2").Select("id")
+	sub := sqlk.NewQuery("test2").Select("id")
 	runCompileCases(t, compiler.New(), []compileCase{
 		{
 			name:  "in values",
@@ -410,13 +410,13 @@ func TestGoquProjectionScenarios(t *testing.T) {
 		{
 			name: "subquery as projection column",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").SelectSub(sqlk.NewQuery().From("u").Select("x"), "y")
+				return q.From("t").SelectSub(sqlk.NewQuery("u").Select("x"), "y")
 			},
 			sql: `SELECT (SELECT "x" FROM "u") AS "y" FROM "t"`,
 		},
 		{
 			name:  "subquery as from target",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.FromSub(sqlk.NewQuery().From("u").Select("x"), "y") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.FromSub(sqlk.NewQuery("u").Select("x"), "y") },
 			sql:   `SELECT * FROM (SELECT "x" FROM "u") AS "y"`,
 		},
 		{
@@ -523,7 +523,7 @@ func TestGoquSelectClauseScenarios(t *testing.T) {
 // TestGoquCTEScenarios covers WITH clauses preceding selects and the three
 // write verbs, with multiple CTEs comma-joined.
 func TestGoquCTEScenarios(t *testing.T) {
-	cte := func(q *sqlk.Query) *sqlk.Query { return q.With("a", sqlk.NewQuery().From("b")) }
+	cte := func(q *sqlk.Query) *sqlk.Query { return q.With("a", sqlk.NewQuery("b")) }
 	runCompileCases(t, compiler.New(), []compileCase{
 		{
 			name:  "single cte before select",
@@ -533,25 +533,25 @@ func TestGoquCTEScenarios(t *testing.T) {
 		{
 			name: "multiple ctes comma joined",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.With("a", sqlk.NewQuery().From("b")).With("c", sqlk.NewQuery().From("d")).From("a")
+				return q.With("a", sqlk.NewQuery("b")).With("c", sqlk.NewQuery("d")).From("a")
 			},
 			sql: "WITH \"a\" AS (SELECT * FROM \"b\"),\n\"c\" AS (SELECT * FROM \"d\")\nSELECT * FROM \"a\"",
 		},
 		{
 			name:  "cte before insert",
-			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").Insert(sqlk.Record{"a": 1}) },
+			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").AsInsert(sqlk.Record{"a": 1}) },
 			sql:   "WITH \"a\" AS (SELECT * FROM \"b\")\nINSERT INTO \"t\" (\"a\") VALUES (?)",
 			args:  []any{1},
 		},
 		{
 			name:  "cte before update",
-			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").Update(sqlk.Record{"a": 1}) },
+			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").AsUpdate(sqlk.Record{"a": 1}) },
 			sql:   "WITH \"a\" AS (SELECT * FROM \"b\")\nUPDATE \"t\" SET \"a\" = ?",
 			args:  []any{1},
 		},
 		{
 			name:  "cte before delete",
-			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").Delete() },
+			build: func(q *sqlk.Query) *sqlk.Query { return cte(q).From("t").AsDelete() },
 			sql:   "WITH \"a\" AS (SELECT * FROM \"b\")\nDELETE FROM \"t\"",
 		},
 	})
@@ -563,28 +563,28 @@ func TestGoquCombineScenarios(t *testing.T) {
 	runCompileCases(t, compiler.New(), []compileCase{
 		{
 			name:  "union",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Union(sqlk.NewQuery().From("foo")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Union(sqlk.NewQuery("foo")) },
 			sql:   `SELECT * FROM "test" UNION SELECT * FROM "foo"`,
 		},
 		{
 			name:  "union all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").UnionAll(sqlk.NewQuery().From("foo")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").UnionAll(sqlk.NewQuery("foo")) },
 			sql:   `SELECT * FROM "test" UNION ALL SELECT * FROM "foo"`,
 		},
 		{
 			name:  "intersect",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Intersect(sqlk.NewQuery().From("foo")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Intersect(sqlk.NewQuery("foo")) },
 			sql:   `SELECT * FROM "test" INTERSECT SELECT * FROM "foo"`,
 		},
 		{
 			name:  "intersect all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").IntersectAll(sqlk.NewQuery().From("foo")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").IntersectAll(sqlk.NewQuery("foo")) },
 			sql:   `SELECT * FROM "test" INTERSECT ALL SELECT * FROM "foo"`,
 		},
 		{
 			name: "chained compounds keep call order",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").Union(sqlk.NewQuery().From("foo")).Intersect(sqlk.NewQuery().From("bar"))
+				return q.From("test").Union(sqlk.NewQuery("foo")).Intersect(sqlk.NewQuery("bar"))
 			},
 			sql: `SELECT * FROM "test" UNION SELECT * FROM "foo" INTERSECT SELECT * FROM "bar"`,
 		},
@@ -599,20 +599,20 @@ func TestGoquInsertScenarios(t *testing.T) {
 		{
 			// Map keys are sorted so the output is deterministic.
 			name:  "key value insert",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Insert(sqlk.Record{"b": "b1", "a": "a1"}) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsInsert(sqlk.Record{"b": "b1", "a": "a1"}) },
 			sql:   `INSERT INTO "test" ("a", "b") VALUES (?, ?)`,
 			args:  []any{"a1", "b1"},
 		},
 		{
 			name:  "nil value binds parameter",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").InsertColumns([]string{"a"}, []any{nil}) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsInsertColumns([]string{"a"}, []any{nil}) },
 			sql:   `INSERT INTO "test" ("a") VALUES (?)`,
 			args:  []any{nil},
 		},
 		{
 			name: "multi row insert",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").InsertRows([]string{"a", "b"},
+				return q.From("test").AsInsertRows([]string{"a", "b"},
 					[]any{"a1", "b1"}, []any{"a2", "b2"}, []any{"a3", "b3"})
 			},
 			sql:  `INSERT INTO "test" ("a", "b") VALUES (?, ?), (?, ?), (?, ?)`,
@@ -621,14 +621,14 @@ func TestGoquInsertScenarios(t *testing.T) {
 		{
 			name: "insert from query without columns",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").InsertFrom(nil, sqlk.NewQuery().From("other").Select("c", "d"))
+				return q.From("test").AsInsertFrom(nil, sqlk.NewQuery("other").Select("c", "d"))
 			},
 			sql: `INSERT INTO "test" SELECT "c", "d" FROM "other"`,
 		},
 		{
 			name: "insert from query with columns",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").InsertFrom([]string{"a", "b"}, sqlk.NewQuery().From("other").Select("c", "d"))
+				return q.From("test").AsInsertFrom([]string{"a", "b"}, sqlk.NewQuery("other").Select("c", "d"))
 			},
 			sql: `INSERT INTO "test" ("a", "b") SELECT "c", "d" FROM "other"`,
 		},
@@ -636,21 +636,21 @@ func TestGoquInsertScenarios(t *testing.T) {
 	runGoquErrCases(t, compiler.New(), []goquErrCase{
 		{
 			name:    "insert without target table",
-			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().InsertColumns([]string{"a"}, []any{1}) },
+			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().AsInsertColumns([]string{"a"}, []any{1}) },
 			wantErr: compiler.ErrNoFromTarget,
 		},
 		{
 			// An empty insert is rejected rather than compiled to DEFAULT
 			// VALUES.
 			name:    "insert with empty data",
-			build:   func(q *sqlk.Query) *sqlk.Query { return q.From("test").Insert(sqlk.Record{}) },
+			build:   func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsInsert(sqlk.Record{}) },
 			wantErr: compiler.ErrInvalidWriteValues,
 		},
 		{
 			// Each row must match the column list length.
 			name: "multi row insert with ragged row",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").InsertRows([]string{"a", "b"}, []any{"a1", "b1"}, []any{"a2"})
+				return q.From("test").AsInsertRows([]string{"a", "b"}, []any{"a1", "b1"}, []any{"a2"})
 			},
 			wantErr: compiler.ErrInvalidWriteValues,
 		},
@@ -666,7 +666,7 @@ func TestGoquUpdateScenarios(t *testing.T) {
 			// Map keys are sorted so the output is deterministic.
 			name: "set with string null and bool values",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").Update(sqlk.Record{"a": true, "b": nil, "c": "x"})
+				return q.From("test").AsUpdate(sqlk.Record{"a": true, "b": nil, "c": "x"})
 			},
 			sql:  `UPDATE "test" SET "a" = ?, "b" = ?, "c" = ?`,
 			args: []any{true, nil, "x"},
@@ -674,7 +674,7 @@ func TestGoquUpdateScenarios(t *testing.T) {
 		{
 			name: "set via columns and values",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").UpdateColumns([]string{"a", "b"}, []any{"b", "c"})
+				return q.From("test").AsUpdateColumns([]string{"a", "b"}, []any{"b", "c"})
 			},
 			sql:  `UPDATE "test" SET "a" = ?, "b" = ?`,
 			args: []any{"b", "c"},
@@ -682,7 +682,7 @@ func TestGoquUpdateScenarios(t *testing.T) {
 		{
 			name: "update with where",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("test").Update(sqlk.Record{"a": "b"}).Where("c", "=", 1)
+				return q.From("test").AsUpdate(sqlk.Record{"a": "b"}).Where("c", "=", 1)
 			},
 			sql:  `UPDATE "test" SET "a" = ? WHERE "c" = ?`,
 			args: []any{"b", 1},
@@ -691,13 +691,13 @@ func TestGoquUpdateScenarios(t *testing.T) {
 	runGoquErrCases(t, compiler.New(), []goquErrCase{
 		{
 			name:    "update without target table",
-			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().Update(sqlk.Record{"a": 1}) },
+			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().AsUpdate(sqlk.Record{"a": 1}) },
 			wantErr: compiler.ErrNoFromTarget,
 		},
 		{
 			// An empty assignment set is rejected.
 			name:    "update with empty set values",
-			build:   func(q *sqlk.Query) *sqlk.Query { return q.From("test").Update(sqlk.Record{}) },
+			build:   func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsUpdate(sqlk.Record{}) },
 			wantErr: compiler.ErrInvalidWriteValues,
 		},
 	})
@@ -709,20 +709,20 @@ func TestGoquDeleteScenarios(t *testing.T) {
 	runCompileCases(t, compiler.New(), []compileCase{
 		{
 			name:  "delete from",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Delete() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsDelete() },
 			sql:   `DELETE FROM "test"`,
 		},
 		{
 			// {} marks an identifier inside a raw expression; the compiler
 			// quotes it per dialect.
 			name:  "delete with raw where",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Delete().WhereRaw("{a} = ?", 1) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsDelete().WhereRaw("{a} = ?", 1) },
 			sql:   `DELETE FROM "test" WHERE "a" = ?`,
 			args:  []any{1},
 		},
 		{
 			name:  "delete with basic where",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").Delete().Where("a", "=", 1) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("test").AsDelete().Where("a", "=", 1) },
 			sql:   `DELETE FROM "test" WHERE "a" = ?`,
 			args:  []any{1},
 		},
@@ -730,7 +730,7 @@ func TestGoquDeleteScenarios(t *testing.T) {
 	runGoquErrCases(t, compiler.New(), []goquErrCase{
 		{
 			name:    "delete without target table",
-			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().Delete() },
+			build:   func(q *sqlk.Query) *sqlk.Query { return sqlk.NewQuery().AsDelete() },
 			wantErr: compiler.ErrNoFromTarget,
 		},
 	})

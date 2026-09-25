@@ -3,7 +3,7 @@
 ## GroupBy
 
 ```go
-query := sqlk.NewQuery().From("Comments").
+query := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as count").
     GroupBy("PostId")
@@ -16,7 +16,7 @@ SELECT [PostId], count(1) as count FROM [Comments] GROUP BY [PostId]
 ## GroupByRaw
 
 ```go
-query := sqlk.NewQuery().From("Companies").
+query := sqlk.NewQuery("Companies").
     Select("Profit").
     SelectRaw("COUNT(*) as count").
     GroupByRaw("Profit WITH ROLLUP")

@@ -3,7 +3,7 @@
 ## OrderBy
 
 ```go
-query := sqlk.NewQuery().From("Comments").OrderBy("Date").OrderByDesc("Name")
+query := sqlk.NewQuery("Comments").OrderBy("Date").OrderByDesc("Name")
 ```
 
 ```sql
@@ -13,7 +13,7 @@ SELECT * FROM [Comments] ORDER BY [Date], [Name] DESC
 ## OrderByRaw
 
 ```go
-query := sqlk.NewQuery().From("Comments").OrderByRaw("[Likes] DESC NULLS LAST")
+query := sqlk.NewQuery("Comments").OrderByRaw("[Likes] DESC NULLS LAST")
 ```
 
 In Sql Server
@@ -33,7 +33,7 @@ SELECT * FROM "Comments" ORDER BY "Likes" DESC NULLS LAST
 Random ordering compiles to the dialect's random function.
 
 ```go
-sqlk.NewQuery().From("Comments").OrderByRandom()
+sqlk.NewQuery("Comments").OrderByRandom()
 ```
 
 In Sql Server

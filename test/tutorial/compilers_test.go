@@ -14,7 +14,7 @@ import (
 
 func TestCompilersLimitOffsetDifferences(t *testing.T) {
 	// The same build code paginates differently per dialect.
-	q := func() *sqlk.Query { return sqlk.NewQuery().From("Posts").Limit(10).Offset(20) }
+	q := func() *sqlk.Query { return sqlk.NewQuery("Posts").Limit(10).Offset(20) }
 	assertSQL(t, compiler.NewSqlserver(), q(),
 		`SELECT * FROM [Posts] ORDER BY (SELECT 0) OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`, int64(20), 10)
 	assertSQL(t, compiler.NewMysql(), q(),
@@ -36,7 +36,7 @@ func TestWhitelist(t *testing.T) {
 	// only to that compiler instance.
 	comp := compiler.NewPostgres().Whitelist("&&", "||")
 	assertSQL(t, comp,
-		sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family", "outdoor"}),
+		sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family", "outdoor"}),
 		`SELECT * FROM "Trips" WHERE "Tags" && ?`, []string{"family", "outdoor"})
 }
 
@@ -44,7 +44,7 @@ func TestOperatorNotAllowed(t *testing.T) {
 	// Operators outside the whitelist are rejected at compile time (matched
 	// with errors.Is).
 	_, err := compiler.NewPostgres().Compile(
-		sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family"}))
+		sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family"}))
 	if !errors.Is(err, compiler.ErrOperatorNotAllowed) {
 		t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 	}

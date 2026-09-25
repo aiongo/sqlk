@@ -19,7 +19,7 @@ sqlk 是 [SqlKata](https://github.com/sqlkata/querybuilder) 的 Go 移植:单一
 除注入防护外,这项技术还能让数据库引擎缓存并复用同一查询计划(即使参数变化),从而加速查询执行。
 
 ```go
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -61,7 +61,7 @@ sqlxDB := sqlx.NewDb(sqlDB, "sqlite3")
 db := exec.New(sqlxDB, compiler.NewSqlite())
 
 // 此后即可构建并执行查询
-post, err := db.First[Post](ctx, sqlk.NewQuery().From("Users").
+post, err := db.First[Post](ctx, sqlk.NewQuery("Users").
     WhereEq("Id", 1).WhereEq("Status", "Active"))
 ```
 
@@ -88,7 +88,7 @@ import (
 // 创建 Sql Server 编译器
 comp := compiler.NewSqlserver()
 
-query := sqlk.NewQuery().From("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
+query := sqlk.NewQuery("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
 
 res, err := comp.Compile(query)
 

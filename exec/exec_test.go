@@ -76,7 +76,7 @@ func TestGetScansRows(t *testing.T) {
 	db, _ := newTestDB(t)
 	ctx := context.Background()
 
-	cars, err := db.Get[Car](ctx, sqlk.NewQuery().From("Cars").OrderBy("Id"))
+	cars, err := db.Get[Car](ctx, sqlk.NewQuery("Cars").OrderBy("Id"))
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestGetScansRows(t *testing.T) {
 	}
 
 	// Filtering and parameter binding round trip.
-	hondas, err := db.Get[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+	hondas, err := db.Get[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 	if err != nil {
 		t.Fatalf("Get with where: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestGetScansRows(t *testing.T) {
 	}
 
 	// No match returns an empty slice, not an error.
-	none, err := db.Get[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"))
+	none, err := db.Get[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"))
 	if err != nil {
 		t.Fatalf("Get no match: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 	db, _ := newTestDB(t)
 	ctx := context.Background()
 
-	car, err := db.First[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Toyota"))
+	car, err := db.First[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Toyota"))
 	if err != nil {
 		t.Fatalf("First: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 	}
 
 	// No rows: First returns a distinguishable error (equal to sql.ErrNoRows).
-	_, err = db.First[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"))
+	_, err = db.First[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"))
 	if !errors.Is(err, exec.ErrNoRows) {
 		t.Errorf("First no rows err = %v, want exec.ErrNoRows", err)
 	}
@@ -131,7 +131,7 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 	}
 
 	// No rows: FirstOrDefault returns the zero value and nil.
-	got, err := db.FirstOrDefault[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"))
+	got, err := db.FirstOrDefault[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"))
 	if err != nil {
 		t.Fatalf("FirstOrDefault no rows: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 		t.Errorf("FirstOrDefault zero = %+v, want zero value", got)
 	}
 
-	first, err := db.FirstOrDefault[Car](ctx, sqlk.NewQuery().From("Cars").OrderBy("Id"))
+	first, err := db.FirstOrDefault[Car](ctx, sqlk.NewQuery("Cars").OrderBy("Id"))
 	if err != nil {
 		t.Fatalf("FirstOrDefault: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestExistsAndNotExist(t *testing.T) {
 	db, _ := newTestDB(t)
 	ctx := context.Background()
 
-	exists, err := db.Exists(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+	exists, err := db.Exists(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 	if err != nil {
 		t.Fatalf("Exists: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestExistsAndNotExist(t *testing.T) {
 		t.Error("Exists(matching) = false, want true")
 	}
 
-	exists, err = db.Exists(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"))
+	exists, err = db.Exists(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"))
 	if err != nil {
 		t.Fatalf("Exists no match: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestExistsAndNotExist(t *testing.T) {
 		t.Error("Exists(no match) = true, want false")
 	}
 
-	notExist, err := db.NotExist(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"))
+	notExist, err := db.NotExist(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"))
 	if err != nil {
 		t.Fatalf("NotExist: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestExistsAndNotExist(t *testing.T) {
 func TestScalarAggregates(t *testing.T) {
 	db, _ := newTestDB(t)
 	ctx := context.Background()
-	all := sqlk.NewQuery().From("Cars")
+	all := sqlk.NewQuery("Cars")
 
 	count, err := db.Count[int64](ctx, all)
 	if err != nil {
@@ -241,7 +241,7 @@ func TestScalarAggregates(t *testing.T) {
 	}
 
 	// Aggregates combined with filter conditions.
-	hondaCount, err := db.Count[int64](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+	hondaCount, err := db.Count[int64](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 	if err != nil {
 		t.Fatalf("Count with where: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestScalarAggregates(t *testing.T) {
 // *exec.Executor, so handles from inside and outside transactions both fit
 // unchanged.
 func loadFirstBrand(ctx context.Context, x *exec.Executor) (string, error) {
-	car, err := x.First[Car](ctx, sqlk.NewQuery().From("Cars").OrderBy("Id"))
+	car, err := x.First[Car](ctx, sqlk.NewQuery("Cars").OrderBy("Id"))
 	if err != nil {
 		return "", err
 	}
@@ -304,7 +304,7 @@ func TestTxIsomorphicAPI(t *testing.T) {
 	if brand != "Honda" {
 		t.Errorf("brand inside tx = %q, want Honda (tx reads committed data)", brand)
 	}
-	inTx, err := tx.Exists(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "InTx"))
+	inTx, err := tx.Exists(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "InTx"))
 	if err != nil {
 		t.Fatalf("exists inside tx: %v", err)
 	}
@@ -322,14 +322,14 @@ func TestTxIsomorphicAPI(t *testing.T) {
 		t.Fatalf("db.Begin: %v", err)
 	}
 	t.Cleanup(func() { _ = begun.Rollback() })
-	gone, err := begun.NotExist(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "InTx"))
+	gone, err := begun.NotExist(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "InTx"))
 	if err != nil {
 		t.Fatalf("not exist in begun tx: %v", err)
 	}
 	if !gone {
 		t.Error("rolled-back row still visible")
 	}
-	count, err := begun.Count[int64](ctx, sqlk.NewQuery().From("Cars"))
+	count, err := begun.Count[int64](ctx, sqlk.NewQuery("Cars"))
 	if err != nil {
 		t.Fatalf("count in begun tx: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := db.Get[Car](ctx, sqlk.NewQuery().From("Cars"))
+	_, err := db.Get[Car](ctx, sqlk.NewQuery("Cars"))
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Get with canceled ctx err = %v, want context.Canceled", err)
 	}
@@ -360,7 +360,7 @@ func TestCompileLogger(t *testing.T) {
 	logged := exec.New(sqlxDB, compiler.NewSqlite(),
 		exec.WithLogger(func(res compiler.Result) { logs = append(logs, res) }))
 
-	if _, err := logged.Get[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda")); err != nil {
+	if _, err := logged.Get[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda")); err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	if len(logs) != 1 {
@@ -390,7 +390,7 @@ func TestCompileLogger(t *testing.T) {
 		t.Fatalf("Begin: %v", err)
 	}
 	t.Cleanup(func() { _ = tx.Rollback() })
-	if _, err := tx.Count[int64](ctx, sqlk.NewQuery().From("Cars")); err != nil {
+	if _, err := tx.Count[int64](ctx, sqlk.NewQuery("Cars")); err != nil {
 		t.Fatalf("Count in tx: %v", err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -414,7 +414,7 @@ func TestCompileErrorFlowsOut(t *testing.T) {
 	if !errors.Is(err, compiler.ErrNoFromTarget) {
 		t.Errorf("Get(no from) err = %v, want compiler.ErrNoFromTarget", err)
 	}
-	_, err = db.Exists(context.Background(), sqlk.NewQuery().From("Cars").Where("Id", "~~", 1))
+	_, err = db.Exists(context.Background(), sqlk.NewQuery("Cars").Where("Id", "~~", 1))
 	if !errors.Is(err, compiler.ErrOperatorNotAllowed) {
 		t.Errorf("Exists(bad operator) err = %v, want compiler.ErrOperatorNotAllowed", err)
 	}
@@ -425,7 +425,7 @@ func TestExecWritePath(t *testing.T) {
 	ctx := context.Background()
 
 	// INSERT: one affected row, and the row is retrievable.
-	affected, err := db.Exec(ctx, sqlk.NewQuery().From("Cars").Insert(sqlk.Record{"Brand": "Audi", "Year": 2023}))
+	affected, err := db.Exec(ctx, sqlk.NewQuery("Cars").AsInsert(sqlk.Record{"Brand": "Audi", "Year": 2023}))
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -434,14 +434,14 @@ func TestExecWritePath(t *testing.T) {
 	}
 
 	// UPDATE that matches: affected rows and written values.
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Toyota").Update(sqlk.Record{"Color": "Blue"}))
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Toyota").AsUpdate(sqlk.Record{"Color": "Blue"}))
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
 	if affected != 1 {
 		t.Errorf("update affected = %d, want 1", affected)
 	}
-	car, err := db.First[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Toyota"))
+	car, err := db.First[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Toyota"))
 	if err != nil {
 		t.Fatalf("read after update: %v", err)
 	}
@@ -450,7 +450,7 @@ func TestExecWritePath(t *testing.T) {
 	}
 
 	// UPDATE with no match: zero affected rows, not an error.
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope").Update(sqlk.Record{"Color": "Blue"}))
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope").AsUpdate(sqlk.Record{"Color": "Blue"}))
 	if err != nil {
 		t.Fatalf("update no match: %v", err)
 	}
@@ -458,29 +458,29 @@ func TestExecWritePath(t *testing.T) {
 		t.Errorf("update no match affected = %d, want 0", affected)
 	}
 
-	// Increment/Decrement: affected rows and the numeric change.
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda").Increment("Year", 5))
+	// AsIncrement/AsDecrement: affected rows and the numeric change.
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda").AsIncrement("Year", 5))
 	if err != nil {
 		t.Fatalf("increment: %v", err)
 	}
 	if affected != 1 {
 		t.Errorf("increment affected = %d, want 1", affected)
 	}
-	car, err = db.FirstOrDefault[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+	car, err = db.FirstOrDefault[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 	if err != nil {
 		t.Fatalf("read after increment: %v", err)
 	}
 	if car.Year != 2025 {
 		t.Errorf("year after increment = %d, want 2025", car.Year)
 	}
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda").Decrement("Year", 10))
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda").AsDecrement("Year", 10))
 	if err != nil {
 		t.Fatalf("decrement: %v", err)
 	}
 	if affected != 1 {
 		t.Errorf("decrement affected = %d, want 1", affected)
 	}
-	car, err = db.FirstOrDefault[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+	car, err = db.FirstOrDefault[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 	if err != nil {
 		t.Fatalf("read after decrement: %v", err)
 	}
@@ -489,21 +489,21 @@ func TestExecWritePath(t *testing.T) {
 	}
 
 	// DELETE: zero rows when no match, row count when matched.
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope").Delete())
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope").AsDelete())
 	if err != nil {
 		t.Fatalf("delete no match: %v", err)
 	}
 	if affected != 0 {
 		t.Errorf("delete no match affected = %d, want 0", affected)
 	}
-	affected, err = db.Exec(ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Audi").Delete())
+	affected, err = db.Exec(ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Audi").AsDelete())
 	if err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	if affected != 1 {
 		t.Errorf("delete affected = %d, want 1", affected)
 	}
-	count, err := db.Count[int64](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Audi"))
+	count, err := db.Count[int64](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Audi"))
 	if err != nil {
 		t.Fatalf("count after delete: %v", err)
 	}
@@ -519,7 +519,7 @@ func TestInsertGetId(t *testing.T) {
 	// Consecutive inserts retrieve consecutive auto-increment IDs (seeded
 	// rows already use 1..3, so new rows start at 4).
 	for i, brand := range []string{"Toyota", "Toyota 2", "Toyota 3"} {
-		id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Cars"), sqlk.Record{"Brand": brand, "Year": 1900 + i})
+		id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Cars"), sqlk.Record{"Brand": brand, "Year": 1900 + i})
 		if err != nil {
 			t.Fatalf("InsertGetId #%d: %v", i+1, err)
 		}
@@ -529,7 +529,7 @@ func TestInsertGetId(t *testing.T) {
 	}
 
 	// The retrieved ID points at the newly written row.
-	car, err := db.First[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Id", 4))
+	car, err := db.First[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Id", 4))
 	if err != nil {
 		t.Fatalf("read inserted row: %v", err)
 	}
@@ -543,7 +543,7 @@ func TestInsertGetId(t *testing.T) {
 		t.Fatalf("begin: %v", err)
 	}
 	t.Cleanup(func() { _ = tx.Rollback() })
-	id, err := tx.InsertGetId[int64](ctx, sqlk.NewQuery().From("Cars"), sqlk.Record{"Brand": "InTx", "Year": 2024})
+	id, err := tx.InsertGetId[int64](ctx, sqlk.NewQuery("Cars"), sqlk.Record{"Brand": "InTx", "Year": 2024})
 	if err != nil {
 		t.Fatalf("InsertGetId in tx: %v", err)
 	}
@@ -563,7 +563,7 @@ func TestInsertGetIdUnsupportedCompiler(t *testing.T) {
 	db, sqlxDB := newTestDB(t)
 	ctx := context.Background()
 	base := exec.New(sqlxDB, compiler.New())
-	_, err := base.InsertGetId[int64](ctx, sqlk.NewQuery().From("Cars"), sqlk.Record{"Brand": "Unsupported", "Year": 1900})
+	_, err := base.InsertGetId[int64](ctx, sqlk.NewQuery("Cars"), sqlk.Record{"Brand": "Unsupported", "Year": 1900})
 	if !errors.Is(err, exec.ErrLastIdUnsupported) {
 		t.Fatalf("InsertGetId error = %v, want ErrLastIdUnsupported", err)
 	}
@@ -571,7 +571,7 @@ func TestInsertGetIdUnsupportedCompiler(t *testing.T) {
 		t.Errorf("errors.Is(err, ErrNoRows) = true, want false (%v)", err)
 	}
 	// The insert was not run: no row with the unsupported brand exists.
-	count, err := db.Count[int64](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Unsupported"))
+	count, err := db.Count[int64](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Unsupported"))
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -586,11 +586,11 @@ func TestPaginate(t *testing.T) {
 
 	// Seed 12 more rows, 15 in total.
 	for i := range 12 {
-		if _, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Cars"), sqlk.Record{"Brand": fmt.Sprintf("Extra %02d", i), "Year": 2000 + i}); err != nil {
+		if _, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Cars"), sqlk.Record{"Brand": fmt.Sprintf("Extra %02d", i), "Year": 2000 + i}); err != nil {
 			t.Fatalf("seed row %d: %v", i, err)
 		}
 	}
-	base := sqlk.NewQuery().From("Cars").OrderBy("Id")
+	base := sqlk.NewQuery("Cars").OrderBy("Id")
 
 	p1, err := db.Paginate[Car](ctx, base, 1, 6)
 	if err != nil {
@@ -632,7 +632,7 @@ func TestPaginate(t *testing.T) {
 	}
 
 	// Empty result: total 0, no list query issued.
-	empty, err := db.Paginate[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"), 1, 6)
+	empty, err := db.Paginate[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"), 1, 6)
 	if err != nil {
 		t.Fatalf("paginate empty: %v", err)
 	}
@@ -697,14 +697,14 @@ func TestChunk(t *testing.T) {
 
 	// Seed 4 more rows, 7 in total.
 	for i := range 4 {
-		if _, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Cars"), sqlk.Record{"Brand": fmt.Sprintf("Extra %d", i), "Year": 2010 + i}); err != nil {
+		if _, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Cars"), sqlk.Record{"Brand": fmt.Sprintf("Extra %d", i), "Year": 2010 + i}); err != nil {
 			t.Fatalf("seed row %d: %v", i, err)
 		}
 	}
 
 	// Full iteration: chunks of 3/3/1, stopping once exhausted.
 	var sizes []int
-	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery().From("Cars").OrderBy("Id"), 3) {
+	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery("Cars").OrderBy("Id"), 3) {
 		if err != nil {
 			t.Fatalf("chunk: %v", err)
 		}
@@ -717,7 +717,7 @@ func TestChunk(t *testing.T) {
 	// Early exit: after break no more pages are fetched; only the first
 	// chunk is yielded.
 	yields := 0
-	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery().From("Cars"), 3) {
+	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery("Cars"), 3) {
 		if err != nil {
 			t.Fatalf("chunk with break: %v", err)
 		}
@@ -733,7 +733,7 @@ func TestChunk(t *testing.T) {
 
 	// Empty result: one empty chunk is yielded.
 	yields = 0
-	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Nope"), 3) {
+	for rows, err := range db.Chunk[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Nope"), 3) {
 		if err != nil {
 			t.Fatalf("chunk empty: %v", err)
 		}
@@ -750,7 +750,7 @@ func TestChunk(t *testing.T) {
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
 	sawErr := false
-	for rows, err := range db.Chunk[Car](canceled, sqlk.NewQuery().From("Cars"), 3) {
+	for rows, err := range db.Chunk[Car](canceled, sqlk.NewQuery("Cars"), 3) {
 		if !errors.Is(err, context.Canceled) {
 			t.Errorf("chunk canceled ctx err = %v, want context.Canceled", err)
 		}

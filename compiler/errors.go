@@ -148,14 +148,14 @@ func (e *VariableError) Is(target error) bool {
 var ErrNoVisibleWriteClause = errors.New("write clause is not visible for the compiling engine")
 
 // ErrMixedInsertForm reports an insert query carrying both row-values
-// clauses (Insert/InsertRows/InsertColumns) and an insert-from-select
-// clause (InsertFrom), typically mixed via For engine scoping against the
+// clauses (AsInsert/AsInsertRows/AsInsertColumns) and an insert-from-select
+// clause (AsInsertFrom), typically mixed via For engine scoping against the
 // same dialect: the two forms cannot combine in one statement, and picking
 // either would silently drop the other, so the mix is rejected up front.
 var ErrMixedInsertForm = errors.New("insert cannot mix row values and insert-from-select")
 
 // ErrNoInsertRows reports an insert query that carries no value rows (e.g.
-// InsertRows called with columns but no rows): there is nothing to write,
+// AsInsertRows called with columns but no rows): there is nothing to write,
 // distinct from a row whose shape is malformed (ErrInvalidWriteValues).
 var ErrNoInsertRows = errors.New("insert has no rows to write")
 

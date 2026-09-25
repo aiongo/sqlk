@@ -177,7 +177,7 @@ func (q *QData) ToQuery(hooks ...Hook) (*sqlk.Query, error) {
 	if !validFrom(from) {
 		return nil, ErrFromRequired
 	}
-	out := sqlk.NewQuery().From(from[0])
+	out := sqlk.NewQuery(from[0])
 	for _, include := range from[1:] {
 		out = out.JoinEq(include,
 			from[0]+"."+include+"_id", include+"."+include+"_id")
@@ -188,7 +188,7 @@ func (q *QData) ToQuery(hooks ...Hook) (*sqlk.Query, error) {
 	}
 
 	if q.Count {
-		return out.Count(), nil
+		return out.AsCount(), nil
 	}
 
 	for _, column := range q.Select {

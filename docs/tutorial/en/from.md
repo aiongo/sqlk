@@ -1,10 +1,10 @@
 # From
 
 ## From a Table or View
-The `From` verb sets the `from` clause; it is usually the first call after `NewQuery`.
+`NewQuery`'s optional table argument sets the `from` clause: `NewQuery("Posts")` is exactly `NewQuery().From("Posts")`. The `From` verb remains for setting or replacing the source later (non-table sources are covered by `FromSub`/`FromRaw` below).
 
 ```go
-sqlk.NewQuery().From("Posts")
+sqlk.NewQuery("Posts")
 ```
 
 ```sql
@@ -15,7 +15,7 @@ SELECT * FROM [Posts]
 To alias the table you should use the `as` syntax
 
 ```go
-sqlk.NewQuery().From("Posts as p")
+sqlk.NewQuery("Posts as p")
 ```
 
 ```sql
@@ -28,7 +28,7 @@ You can select from a sub query by passing a `*Query` to `FromSub` together with
 
 ```go
 fewMonthsAgo := time.Date(2017, 6, 1, 6, 31, 26, 0, time.UTC)
-oldPosts := sqlk.NewQuery().From("Posts").Where("Date", "<", fewMonthsAgo)
+oldPosts := sqlk.NewQuery("Posts").Where("Date", "<", fewMonthsAgo)
 
 query := sqlk.NewQuery().FromSub(oldPosts, "old").OrderByDesc("Date")
 ```

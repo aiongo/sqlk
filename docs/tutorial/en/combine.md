@@ -8,8 +8,8 @@ The verbs accept a `*Query` directly, or a callback via the `…Func` variants (
 
 
 ```go
-phones := sqlk.NewQuery().From("Phones")
-laptops := sqlk.NewQuery().From("Laptops")
+phones := sqlk.NewQuery("Phones")
+laptops := sqlk.NewQuery("Laptops")
 
 mobiles := laptops.Union(phones)
 ```
@@ -22,7 +22,7 @@ SELECT * FROM [Laptops] UNION SELECT * FROM [Phones]
 Or by using the callback variant
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").
+mobiles := sqlk.NewQuery("Laptops").
     ExceptAllFunc(func(q *sqlk.Query) *sqlk.Query { return q.From("OldLaptops") })
 ```
 
@@ -35,7 +35,7 @@ SELECT * FROM [Laptops] EXCEPT ALL SELECT * FROM [OldLaptops]
 You can always use the `CombineRaw` verb to append raw expressions
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").CombineRaw("union all select * from OldLaptops")
+mobiles := sqlk.NewQuery("Laptops").CombineRaw("union all select * from OldLaptops")
 ```
 
 ```sql
@@ -46,7 +46,7 @@ Of course you can use the table identifier characters `[` and `]` to instruct sq
 
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").CombineRaw("union all select * from [OldLaptops]")
+mobiles := sqlk.NewQuery("Laptops").CombineRaw("union all select * from [OldLaptops]")
 ```
 
 ```sql

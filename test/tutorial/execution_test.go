@@ -73,7 +73,7 @@ func TestExecutionIntro(t *testing.T) {
 	db := newPostsDB(t)
 	ctx := context.Background()
 
-	q := sqlk.NewQuery().From("Posts").
+	q := sqlk.NewQuery("Posts").
 		Where("Likes", ">", 10).
 		WhereIn("Lang", "en", "fr").
 		WhereNotNull("AuthorId").
@@ -99,7 +99,7 @@ func TestExecutionIntro(t *testing.T) {
 // index.md (First implicitly appends Limit(1)).
 func TestGettingStartedSql(t *testing.T) {
 	assertSQL(t, compiler.NewSqlite(),
-		sqlk.NewQuery().From("Users").WhereEq("Id", 1).WhereEq("Status", "Active").
+		sqlk.NewQuery("Users").WhereEq("Id", 1).WhereEq("Status", "Active").
 			Limit(1),
 		`SELECT * FROM "Users" WHERE "Id" = ? AND "Status" = ? LIMIT ?`, 1, "Active", 1)
 }
@@ -108,7 +108,7 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 	db := newPostsDB(t)
 	ctx := context.Background()
 
-	post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
+	post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 	if err != nil {
 		t.Fatalf("First: %v", err)
 	}
@@ -118,14 +118,14 @@ func TestFirstAndFirstOrDefault(t *testing.T) {
 
 	// First implicitly appends Limit(1); no matching row yields a
 	// distinguishable ErrNoRows.
-	_, err = db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+	_, err = db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 	if !errors.Is(err, exec.ErrNoRows) {
 		t.Fatalf("First(no row) error = %v, want ErrNoRows", err)
 	}
 
 	// FirstOrDefault does not treat an empty result as an error: it returns
 	// the zero value.
-	missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+	missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 	if err != nil {
 		t.Fatalf("FirstOrDefault: %v", err)
 	}
@@ -138,14 +138,14 @@ func TestExists(t *testing.T) {
 	db := newPostsDB(t)
 	ctx := context.Background()
 
-	exists, err := db.Exists(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "fr"))
+	exists, err := db.Exists(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "fr"))
 	if err != nil {
 		t.Fatalf("Exists: %v", err)
 	}
 	if !exists {
 		t.Fatal("Exists = false, want true")
 	}
-	missing, err := db.NotExist(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "de"))
+	missing, err := db.NotExist(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "de"))
 	if err != nil {
 		t.Fatalf("NotExist: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestPaginate(t *testing.T) {
 	db := newPostsDB(t)
 	ctx := context.Background()
 
-	page1, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 1, 2)
+	page1, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 1, 2)
 	if err != nil {
 		t.Fatalf("Paginate: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestPaginate(t *testing.T) {
 		t.Fatalf("page1 = {Total %d, List %d, HasMore %v}, want {3, 2, true}",
 			page1.Total, len(page1.List), page1.HasMore())
 	}
-	page2, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2, 2)
+	page2, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2, 2)
 	if err != nil {
 		t.Fatalf("Paginate: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestChunk(t *testing.T) {
 	ctx := context.Background()
 
 	total, chunks := 0, 0
-	for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2) {
+	for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2) {
 		if err != nil {
 			t.Fatalf("Chunk: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestInsertGetIdAndUpdateAndDelete(t *testing.T) {
 
 	// InsertGetId inserts and returns the auto-generated id (a dialect
 	// specific LastId statement).
-	id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"), sqlk.Record{
+	id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"), sqlk.Record{
 		"Title": "New Post", "Likes": 0, "Lang": "en", "AuthorId": nil, "Date": "2024-02-01",
 	})
 	if err != nil {
@@ -209,20 +209,20 @@ func TestInsertGetIdAndUpdateAndDelete(t *testing.T) {
 	}
 
 	// Exec runs the UPDATE and returns the affected row count.
-	affected, err := db.Exec(ctx, sqlk.NewQuery().From("Posts").
-		WhereEq("Id", 1).Update(sqlk.Record{"Likes": 30}))
+	affected, err := db.Exec(ctx, sqlk.NewQuery("Posts").
+		WhereEq("Id", 1).AsUpdate(sqlk.Record{"Likes": 30}))
 	if err != nil {
-		t.Fatalf("Exec(Update): %v", err)
+		t.Fatalf("Exec(AsUpdate): %v", err)
 	}
 	if affected != 1 {
 		t.Fatalf("affected = %d, want 1", affected)
 	}
 
 	// Increment is the numeric-increase form of UPDATE.
-	if _, err := db.Exec(ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1).Increment("Likes")); err != nil {
-		t.Fatalf("Exec(Increment): %v", err)
+	if _, err := db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1).AsIncrement("Likes")); err != nil {
+		t.Fatalf("Exec(AsIncrement): %v", err)
 	}
-	post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
+	post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 	if err != nil {
 		t.Fatalf("First: %v", err)
 	}
@@ -231,9 +231,9 @@ func TestInsertGetIdAndUpdateAndDelete(t *testing.T) {
 	}
 
 	// Exec runs the DELETE.
-	deleted, err := db.Exec(ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 4).Delete())
+	deleted, err := db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", 4).AsDelete())
 	if err != nil {
-		t.Fatalf("Exec(Delete): %v", err)
+		t.Fatalf("Exec(AsDelete): %v", err)
 	}
 	if deleted != 1 {
 		t.Fatalf("deleted = %d, want 1", deleted)
@@ -244,14 +244,14 @@ func TestAggregateScalars(t *testing.T) {
 	db := newPostsDB(t)
 	ctx := context.Background()
 
-	count, err := db.Count[int64](ctx, sqlk.NewQuery().From("Posts"))
+	count, err := db.Count[int64](ctx, sqlk.NewQuery("Posts"))
 	if err != nil {
 		t.Fatalf("Count: %v", err)
 	}
 	if count != 3 {
 		t.Fatalf("Count = %d, want 3", count)
 	}
-	sum, err := db.Sum[int64](ctx, sqlk.NewQuery().From("Posts"), "Likes")
+	sum, err := db.Sum[int64](ctx, sqlk.NewQuery("Posts"), "Likes")
 	if err != nil {
 		t.Fatalf("Sum: %v", err)
 	}
@@ -270,14 +270,14 @@ func TestTransaction(t *testing.T) {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(ctx, sqlk.NewQuery().From("Posts").
-		WhereEq("Id", 2).Update(sqlk.Record{"Likes": 10})); err != nil {
+	if _, err := tx.Exec(ctx, sqlk.NewQuery("Posts").
+		WhereEq("Id", 2).AsUpdate(sqlk.Record{"Likes": 10})); err != nil {
 		t.Fatalf("tx.Exec: %v", err)
 	}
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("Commit: %v", err)
 	}
-	post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 2))
+	post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 2))
 	if err != nil {
 		t.Fatalf("First: %v", err)
 	}
@@ -295,7 +295,7 @@ func TestLogger(t *testing.T) {
 	}))
 	ctx := context.Background()
 
-	if _, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts")); err != nil {
+	if _, err := db.Get[Post](ctx, sqlk.NewQuery("Posts")); err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	if len(logged) != 1 || logged[0] != `SELECT * FROM "Posts"` {

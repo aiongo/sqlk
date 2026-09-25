@@ -5,7 +5,7 @@ The `Having` family mirrors the full `Where` capability on the post-grouping sec
 ## Having
 
 ```go
-commentsCount := sqlk.NewQuery().From("Comments").
+commentsCount := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId")
@@ -22,7 +22,7 @@ args: `[100]`
 ## HavingRaw
 
 ```go
-query := sqlk.NewQuery().From("Comments").
+query := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").
@@ -37,7 +37,7 @@ SELECT [PostId], count(1) as Count FROM [Comments] GROUP BY [PostId] HAVING coun
 To nest having conditions, use `HavingGroup`: the callback accumulates conditions with the `Where` family, and the compiler renders them as a parenthesized `HAVING (…)` group.
 
 ```go
-query := sqlk.NewQuery().From("Comments").
+query := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").

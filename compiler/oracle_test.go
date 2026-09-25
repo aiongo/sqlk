@@ -36,7 +36,7 @@ func TestOracleIdentifiers(t *testing.T) {
 		},
 		{
 			name:  "count alias omits the AS keyword",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount() },
 			sql:   `SELECT COUNT(*) "count" FROM "A"`,
 		},
 		{
@@ -64,7 +64,7 @@ func TestOracleIdentifiers(t *testing.T) {
 		{
 			name: "subquery from alias omits the AS keyword",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("users").Select("id"), "u")
+				return q.FromSub(sqlk.NewQuery("users").Select("id"), "u")
 			},
 			sql: `SELECT * FROM (SELECT "id" FROM "users") "u"`,
 		},
@@ -111,7 +111,7 @@ func TestOracleLimitOffset(t *testing.T) {
 			// A subquery with its own pagination inlines it at its own level.
 			name: "subquery limit applies at its own level",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereInSub("Id", sqlk.NewQuery().From("Logs").Limit(3))
+				return q.From("Users").WhereInSub("Id", sqlk.NewQuery("Logs").Limit(3))
 			},
 			sql:  `SELECT * FROM "Users" WHERE "Id" IN (SELECT * FROM "Logs" ORDER BY (SELECT 0 FROM DUAL) OFFSET ? ROWS FETCH NEXT ? ROWS ONLY)`,
 			args: []any{int64(0), 3},
@@ -171,7 +171,7 @@ func TestOracleLegacyLimit(t *testing.T) {
 			name: "cte precedes outside the wrapper",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Table").
-					With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).
+					With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).
 					Limit(5)
 			},
 			sql:  "WITH \"t\" AS (SELECT * FROM \"src\" WHERE \"Ok\" = ?)\nSELECT * FROM (SELECT * FROM \"Table\") WHERE ROWNUM <= ?",
@@ -181,7 +181,7 @@ func TestOracleLegacyLimit(t *testing.T) {
 			// A subquery with its own pagination wraps at its own level.
 			name: "subquery limit wraps at its own level",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereInSub("Id", sqlk.NewQuery().From("Logs").Limit(3))
+				return q.From("Users").WhereInSub("Id", sqlk.NewQuery("Logs").Limit(3))
 			},
 			sql:  `SELECT * FROM "Users" WHERE "Id" IN (SELECT * FROM (SELECT * FROM "Logs") WHERE ROWNUM <= ?)`,
 			args: []any{3},
@@ -196,7 +196,7 @@ func TestOracleInsertMany(t *testing.T) {
 			// per row and finish with SELECT 1 FROM DUAL.
 			name: "insert many repeats into and selects from dual",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").InsertRows([]string{"Name", "Price"},
+				return q.From("Table").AsInsertRows([]string{"Name", "Price"},
 					[]any{"A", 1000}, []any{"B", 2000}, []any{"C", 3000})
 			},
 			sql:  `INSERT ALL INTO "Table" ("Name", "Price") VALUES (?, ?) INTO "Table" ("Name", "Price") VALUES (?, ?) INTO "Table" ("Name", "Price") VALUES (?, ?) SELECT 1 FROM DUAL`,
@@ -206,7 +206,7 @@ func TestOracleInsertMany(t *testing.T) {
 			// A single-row insert emits neither ALL nor SELECT 1 FROM DUAL.
 			name: "single insert keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").InsertRows([]string{"Name", "Price"}, []any{"A", 1000})
+				return q.From("Table").AsInsertRows([]string{"Name", "Price"}, []any{"A", 1000})
 			},
 			sql:  `INSERT INTO "Table" ("Name", "Price") VALUES (?, ?)`,
 			args: []any{"A", 1000},
@@ -215,7 +215,7 @@ func TestOracleInsertMany(t *testing.T) {
 			// The oracle dialect has no last-id statement to append.
 			name: "insert return id appends nothing",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Table").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Table" ("Name") VALUES (?)`,
 			args: []any{"x"},
@@ -391,7 +391,7 @@ func TestOracleBuildSurface(t *testing.T) {
 		{
 			name: "aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Active", true).Count()
+				return q.From("A").WhereEq("Active", true).AsCount()
 			},
 			sql:  `SELECT COUNT(*) "count" FROM "A" WHERE "Active" = ?`,
 			args: []any{true},
@@ -419,7 +419,7 @@ func TestOracleBuildSurface(t *testing.T) {
 		{
 			name: "update keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Update(sqlk.Record{"Name": "x"})
+				return q.From("Users").WhereEq("Id", 1).AsUpdate(sqlk.Record{"Name": "x"})
 			},
 			sql:  `UPDATE "Users" SET "Name" = ? WHERE "Id" = ?`,
 			args: []any{"x", 1},

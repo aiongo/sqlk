@@ -15,13 +15,13 @@
 用 `With` 动词给查询加一个 CTE。
 
 ```go
-activePosts := sqlk.NewQuery().From("Comments").
+activePosts := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").
     HavingRaw("count(1) > 100")
 
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     With("ActivePosts", activePosts). // 此后可以把 ActivePosts 当作库里的常规表
     JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
     Select("Posts.*", "ActivePosts.Count")
@@ -37,7 +37,7 @@ INNER JOIN [ActivePosts] ON [ActivePosts].[PostId] = [Posts].[Id]
 想传原生 SQL 表达式时用 `WithRaw` 动词。
 
 ```go
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     WithRaw("ActivePosts", "select PostId, count(1) as count from Comments having count(1) > ?", 50). // 此后可以把 ActivePosts 当作库里的常规表
     JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
     Select("Posts.*", "ActivePosts.Count")

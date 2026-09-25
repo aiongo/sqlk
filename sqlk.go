@@ -2,7 +2,7 @@
 // verb, chained calls accumulate clauses, and the compiler package compiles
 // the result into placeholder SQL and ordered arguments for the dialect.
 //
-//	q := sqlk.NewQuery().From("Users").Select("Id", "Name").WhereEq("Id", 1)
+//	q := sqlk.NewQuery("Users").Select("Id", "Name").WhereEq("Id", 1)
 //	res, err := compiler.New().Compile(q)
 //	// res.SQL  == `SELECT "Id", "Name" FROM "Users" WHERE "Id" = ?`
 //	// res.Args == []any{1}
@@ -16,8 +16,8 @@ import "github.com/aiongo/sqlk/internal/core"
 type Query = core.Query
 
 // Record is one row of column/value pairs: the shape carried by the
-// key-value forms of the write verbs (`Insert`, `InsertReturnId`,
-// `Update`) and the equality-shorthand condition maps (`WhereMap`,
+// key-value forms of the write verbs (`AsInsert`, `AsInsertReturnId`,
+// `AsUpdate`) and the equality-shorthand condition maps (`WhereMap`,
 // `HavingMap`). It is an alias for map[string]any, so a plain
 // map[string]any literal is interchangeable with it.
 type Record = core.Record
@@ -33,9 +33,11 @@ const (
 	EngineOracle    = "oracle"
 )
 
-// NewQuery returns an empty query; it is the entry point of building.
-func NewQuery() *Query {
-	return core.NewQuery()
+// NewQuery returns an empty query; it is the entry point of building. The
+// optional table argument is the constructor form of From — the behavior
+// contract lives on core.NewQuery.
+func NewQuery(table ...string) *Query {
+	return core.NewQuery(table...)
 }
 
 // Join is the scope for ON conditions: callbacks of verbs like `JoinOn` and
@@ -67,7 +69,7 @@ func EscapeLike(char string) MatchOption { return core.EscapeLike(char) }
 type Variable = core.Variable
 
 // NewVariable returns a reference to a query variable, usable as a value in
-// parameter positions (Where/In/Between values, Insert/Update write values,
+// parameter positions (Where/In/Between values, AsInsert/AsUpdate write values,
 // and so on): at compile time the definition of the same name made on this
 // query's `Define` is looked up first, then the parent chain upward; a found
 // value binds as a plain parameter (placeholder plus argument). A name

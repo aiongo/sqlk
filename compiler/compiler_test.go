@@ -215,7 +215,7 @@ func TestCompileSubQueryColumns(t *testing.T) {
 		{
 			name: "subquery column with alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Select("Id").WhereEq("Type", "error"), "FirstErrorId")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Select("Id").WhereEq("Type", "error"), "FirstErrorId")
 			},
 			sql:  `SELECT (SELECT "Id" FROM "Logs" WHERE "Type" = ?) AS "FirstErrorId" FROM "Users"`,
 			args: []any{"error"},
@@ -223,21 +223,21 @@ func TestCompileSubQueryColumns(t *testing.T) {
 		{
 			name: "subquery column without alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Select("Id"), "")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Select("Id"), "")
 			},
 			sql: `SELECT (SELECT "Id" FROM "Logs") FROM "Users"`,
 		},
 		{
 			name: "empty alias keeps the subquery own As alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Select("Id").As("own"), "")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Select("Id").As("own"), "")
 			},
 			sql: `SELECT (SELECT "Id" FROM "Logs") AS "own" FROM "Users"`,
 		},
 		{
 			name: "explicit alias overrides the subquery own As alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Select("Id").As("own"), "given")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Select("Id").As("own"), "given")
 			},
 			sql: `SELECT (SELECT "Id" FROM "Logs") AS "given" FROM "Users"`,
 		},
@@ -246,7 +246,7 @@ func TestCompileSubQueryColumns(t *testing.T) {
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Users").
 					SelectRaw("greatest(?, ?)", 1, 2).
-					SelectSub(sqlk.NewQuery().From("Logs").WhereEq("Id", 7).Select("Id"), "LogId").
+					SelectSub(sqlk.NewQuery("Logs").WhereEq("Id", 7).Select("Id"), "LogId").
 					Select("Name").
 					Where("Users.Id", ">", 100)
 			},
@@ -257,8 +257,8 @@ func TestCompileSubQueryColumns(t *testing.T) {
 	runCompileCases(t, comp, tests)
 
 	t.Run("subquery is cloned at embed time", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Logs").Select("Id")
-		q := sqlk.NewQuery().From("Users").SelectSub(sub, "LogId")
+		sub := sqlk.NewQuery("Logs").Select("Id")
+		q := sqlk.NewQuery("Users").SelectSub(sub, "LogId")
 
 		sub.WhereEq("Type", "error") // later mutation must not affect the embedded clause
 
@@ -271,8 +271,8 @@ func TestCompileSubQueryColumns(t *testing.T) {
 
 	t.Run("validation descends into subqueries", func(t *testing.T) {
 		t.Run("operator outside whitelist inside subquery", func(t *testing.T) {
-			sub := sqlk.NewQuery().From("Logs").Where("Type", "startswith", "x").Select("Id")
-			_, err := comp.Compile(sqlk.NewQuery().From("Users").SelectSub(sub, "LogId"))
+			sub := sqlk.NewQuery("Logs").Where("Type", "startswith", "x").Select("Id")
+			_, err := comp.Compile(sqlk.NewQuery("Users").SelectSub(sub, "LogId"))
 			if !errors.Is(err, ErrOperatorNotAllowed) {
 				t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 			}
@@ -280,7 +280,7 @@ func TestCompileSubQueryColumns(t *testing.T) {
 
 		t.Run("missing from target inside subquery", func(t *testing.T) {
 			sub := sqlk.NewQuery().Select("Id")
-			_, err := comp.Compile(sqlk.NewQuery().From("Users").SelectSub(sub, "LogId"))
+			_, err := comp.Compile(sqlk.NewQuery("Users").SelectSub(sub, "LogId"))
 			if !errors.Is(err, ErrNoFromTarget) {
 				t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 			}
@@ -314,7 +314,7 @@ func TestCompileDistinct(t *testing.T) {
 	runCompileCases(t, comp, tests)
 
 	t.Run("distinct survives Clone", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Select("Name").Distinct().Clone())
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Select("Name").Distinct().Clone())
 		want := `SELECT DISTINCT "Name" FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -329,7 +329,7 @@ func TestCompileFromShapes(t *testing.T) {
 		{
 			name: "from subquery with alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("Logs").Select("UserId", "Count").WhereEq("Type", "error"), "ErrLogs")
+				return q.FromSub(sqlk.NewQuery("Logs").Select("UserId", "Count").WhereEq("Type", "error"), "ErrLogs")
 			},
 			sql:  `SELECT * FROM (SELECT "UserId", "Count" FROM "Logs" WHERE "Type" = ?) AS "ErrLogs"`,
 			args: []any{"error"},
@@ -337,14 +337,14 @@ func TestCompileFromShapes(t *testing.T) {
 		{
 			name: "from subquery without alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("Logs").Select("Id"), "")
+				return q.FromSub(sqlk.NewQuery("Logs").Select("Id"), "")
 			},
 			sql: `SELECT * FROM (SELECT "Id" FROM "Logs")`,
 		},
 		{
 			name: "empty alias keeps the subquery own As alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("Logs").Select("Id").As("own"), "")
+				return q.FromSub(sqlk.NewQuery("Logs").Select("Id").As("own"), "")
 			},
 			sql: `SELECT * FROM (SELECT "Id" FROM "Logs") AS "own"`,
 		},
@@ -366,7 +366,7 @@ func TestCompileFromShapes(t *testing.T) {
 		{
 			name: "from subquery bindings precede where bindings",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("Logs").WhereEq("Id", 7).Select("Id"), "L").WhereEq("L.Id", 9)
+				return q.FromSub(sqlk.NewQuery("Logs").WhereEq("Id", 7).Select("Id"), "L").WhereEq("L.Id", 9)
 			},
 			sql:  `SELECT * FROM (SELECT "Id" FROM "Logs" WHERE "Id" = ?) AS "L" WHERE "L"."Id" = ?`,
 			args: []any{7, 9},
@@ -374,8 +374,8 @@ func TestCompileFromShapes(t *testing.T) {
 		{
 			name: "subquery column over from subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				inner := sqlk.NewQuery().From("Logs").Select("Id")
-				return q.FromSub(sqlk.NewQuery().From("Users").SelectSub(inner, "LastLog").As("U"), "")
+				inner := sqlk.NewQuery("Logs").Select("Id")
+				return q.FromSub(sqlk.NewQuery("Users").SelectSub(inner, "LastLog").As("U"), "")
 			},
 			sql: `SELECT * FROM (SELECT (SELECT "Id" FROM "Logs") AS "LastLog" FROM "Users") AS "U"`,
 		},
@@ -383,7 +383,7 @@ func TestCompileFromShapes(t *testing.T) {
 	runCompileCases(t, comp, tests)
 
 	t.Run("from later calls replace earlier targets", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("A").From("B"))
+		res := mustCompile(t, comp, sqlk.NewQuery("A").From("B"))
 		want := `SELECT * FROM "B"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -391,7 +391,7 @@ func TestCompileFromShapes(t *testing.T) {
 	})
 
 	t.Run("from subquery is cloned at embed time", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Logs").Select("Id")
+		sub := sqlk.NewQuery("Logs").Select("Id")
 		q := sqlk.NewQuery().FromSub(sub, "L")
 
 		sub.WhereEq("Type", "error")
@@ -404,7 +404,7 @@ func TestCompileFromShapes(t *testing.T) {
 	})
 
 	t.Run("validation descends into from subqueries", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Logs").Where("Type", "startswith", "x").Select("Id")
+		sub := sqlk.NewQuery("Logs").Where("Type", "startswith", "x").Select("Id")
 		_, err := comp.Compile(sqlk.NewQuery().FromSub(sub, "L"))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
@@ -416,7 +416,7 @@ func TestCompileAliasAndComment(t *testing.T) {
 	comp := New()
 
 	t.Run("As does not change the query own SQL", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Select("Id").As("u"))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Select("Id").As("u"))
 		want := `SELECT "Id" FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -424,8 +424,8 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("As marks the query for outer reference", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Select("Id").
-			FromSub(sqlk.NewQuery().From("Logs").As("L"), ""))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Select("Id").
+			FromSub(sqlk.NewQuery("Logs").As("L"), ""))
 		want := `SELECT "Id" FROM (SELECT * FROM "Logs") AS "L"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -433,7 +433,7 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("comment prefixes the statement", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Comment("slow-query origin").Select("Id"))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Comment("slow-query origin").Select("Id"))
 		want := `/* slow-query origin */ SELECT "Id" FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -441,7 +441,7 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("comment with sections and bindings", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Comment("trace").WhereEq("Id", 1).Limit(3))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Comment("trace").WhereEq("Id", 1).Limit(3))
 		want := `/* trace */ SELECT * FROM "Users" WHERE "Id" = ? LIMIT ?`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -452,7 +452,7 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("comment cannot break out of the block", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").Comment("evil */ DROP TABLE Users; --"))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").Comment("evil */ DROP TABLE Users; --"))
 		want := `/* evil * / DROP TABLE Users; -- */ SELECT * FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -460,8 +460,8 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("comment on subquery stays inside the parentheses", func(t *testing.T) {
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").
-			SelectSub(sqlk.NewQuery().From("Logs").Comment("inner").Select("Id"), "LogId"))
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").
+			SelectSub(sqlk.NewQuery("Logs").Comment("inner").Select("Id"), "LogId"))
 		want := `SELECT (/* inner */ SELECT "Id" FROM "Logs") AS "LogId" FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("Compile(...) SQL = %q, want %q", res.SQL, want)
@@ -469,7 +469,7 @@ func TestCompileAliasAndComment(t *testing.T) {
 	})
 
 	t.Run("alias and comment survive Clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Logs").Select("Id").As("L").Comment("trace")
+		base := sqlk.NewQuery("Logs").Select("Id").As("L").Comment("trace")
 		clone := base.Clone()
 
 		res := mustCompile(t, comp, sqlk.NewQuery().FromSub(clone, ""))
@@ -491,7 +491,7 @@ func TestWhenAndWhenNot(t *testing.T) {
 	addFlagFilter := func(q *sqlk.Query) *sqlk.Query { return q.WhereEq("Active", true) }
 
 	t.Run("When applies the callback when true", func(t *testing.T) {
-		res := compile(t, sqlk.NewQuery().From("Users").When(true, addFlagFilter))
+		res := compile(t, sqlk.NewQuery("Users").When(true, addFlagFilter))
 		want := `SELECT * FROM "Users" WHERE "Active" = ?`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -502,7 +502,7 @@ func TestWhenAndWhenNot(t *testing.T) {
 	})
 
 	t.Run("When skips the callback when false", func(t *testing.T) {
-		res := compile(t, sqlk.NewQuery().From("Users").When(false, addFlagFilter))
+		res := compile(t, sqlk.NewQuery("Users").When(false, addFlagFilter))
 		want := `SELECT * FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -510,7 +510,7 @@ func TestWhenAndWhenNot(t *testing.T) {
 	})
 
 	t.Run("WhenNot applies the callback when false", func(t *testing.T) {
-		res := compile(t, sqlk.NewQuery().From("Users").WhenNot(false, addFlagFilter))
+		res := compile(t, sqlk.NewQuery("Users").WhenNot(false, addFlagFilter))
 		want := `SELECT * FROM "Users" WHERE "Active" = ?`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -518,7 +518,7 @@ func TestWhenAndWhenNot(t *testing.T) {
 	})
 
 	t.Run("WhenNot skips the callback when true", func(t *testing.T) {
-		res := compile(t, sqlk.NewQuery().From("Users").WhenNot(true, addFlagFilter))
+		res := compile(t, sqlk.NewQuery("Users").WhenNot(true, addFlagFilter))
 		want := `SELECT * FROM "Users"`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -527,7 +527,7 @@ func TestWhenAndWhenNot(t *testing.T) {
 
 	t.Run("conditional pagination without if branches", func(t *testing.T) {
 		build := func(pageSize int) *sqlk.Query {
-			return sqlk.NewQuery().From("Users").
+			return sqlk.NewQuery("Users").
 				Select("Id").
 				When(pageSize > 0, func(q *sqlk.Query) *sqlk.Query { return q.Limit(pageSize) }).
 				WhenNot(pageSize > 0, func(q *sqlk.Query) *sqlk.Query { return q.Select("Name") })
@@ -554,7 +554,7 @@ func TestCloneIndependence(t *testing.T) {
 	}
 
 	t.Run("variants diverge without affecting each other", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").Select("Id", "Name").Where("Age", ">", 18)
+		base := sqlk.NewQuery("Users").Select("Id", "Name").Where("Age", ">", 18)
 
 		adults := base.Clone().WhereEq("Active", true)
 		minors := base.Clone().WhereEq("Active", false).Limit(5)
@@ -571,7 +571,7 @@ func TestCloneIndependence(t *testing.T) {
 	})
 
 	t.Run("mutating the original after Clone leaves the clone untouched", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").Limit(10)
+		base := sqlk.NewQuery("Users").Limit(10)
 		clone := base.Clone()
 
 		base.Limit(99)        // replaces the same slot
@@ -586,9 +586,9 @@ func TestCloneIndependence(t *testing.T) {
 	})
 
 	t.Run("nested subqueries are cloned deeply", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
-			FromSub(sqlk.NewQuery().From("Logs").WhereEq("Type", "error"), "L").
-			SelectSub(sqlk.NewQuery().From("Events").Select("Id"), "Eid")
+		base := sqlk.NewQuery("Users").
+			FromSub(sqlk.NewQuery("Logs").WhereEq("Type", "error"), "L").
+			SelectSub(sqlk.NewQuery("Events").Select("Id"), "Eid")
 
 		variant := base.Clone().WhereEq("L.Type", "fatal")
 
@@ -823,7 +823,7 @@ func TestCompileBetweenConditions(t *testing.T) {
 
 func TestCompileInConditions(t *testing.T) {
 	idsSub := func() *sqlk.Query {
-		return sqlk.NewQuery().From("Logs").Select("UserId").WhereEq("Type", "error")
+		return sqlk.NewQuery("Logs").Select("UserId").WhereEq("Type", "error")
 	}
 
 	runCompileCases(t, New(), []compileCase{
@@ -889,7 +889,7 @@ func TestCompileInConditions(t *testing.T) {
 
 func TestCompileWhereColumnsAndSub(t *testing.T) {
 	countSub := func() *sqlk.Query {
-		return sqlk.NewQuery().From("Table2").WhereColumns("Table2.Column", "=", "Table.MyCol").Select("Id")
+		return sqlk.NewQuery("Table2").WhereColumns("Table2.Column", "=", "Table.MyCol").Select("Id")
 	}
 
 	runCompileCases(t, New(), []compileCase{
@@ -1111,7 +1111,7 @@ func TestCompileLikeConditions(t *testing.T) {
 
 func TestCompileExistsConditions(t *testing.T) {
 	commentCount := func() *sqlk.Query {
-		return sqlk.NewQuery().From("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id")
+		return sqlk.NewQuery("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id")
 	}
 
 	runCompileCases(t, New(), []compileCase{
@@ -1140,7 +1140,7 @@ func TestCompileExistsConditions(t *testing.T) {
 		{
 			name: "subquery bindings are merged in placeholder order",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Comments").WhereEq("PostId", 7).WhereEq("Visible", true)
+				sub := sqlk.NewQuery("Comments").WhereEq("PostId", 7).WhereEq("Visible", true)
 				return q.From("Posts").WhereEq("Author", "go").WhereExists(sub)
 			},
 			sql:  `SELECT * FROM "Posts" WHERE "Author" = ? AND EXISTS (SELECT 1 FROM "Comments" WHERE "PostId" = ? AND "Visible" = ?)`,
@@ -1159,7 +1159,7 @@ func TestCompileExistsConditions(t *testing.T) {
 		{
 			name: "replacing the projection for exists does not disturb the embedded query",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Comments").Select("Id").WhereEq("PostId", 7)
+				sub := sqlk.NewQuery("Comments").Select("Id").WhereEq("PostId", 7)
 				q.From("Posts").WhereExists(sub)
 				if got := mustCompile(t, New(), sub).SQL; got != `SELECT "Id" FROM "Comments" WHERE "PostId" = ?` {
 					t.Errorf("embedded subquery SQL = %q, want its own projection preserved", got)
@@ -1175,8 +1175,8 @@ func TestCompileExistsConditions(t *testing.T) {
 		// With omission disabled, the subquery keeps its own projection.
 		comp := New()
 		comp.omitSelectInsideExists = false
-		sub := sqlk.NewQuery().From("Comments").Select("Id").WhereColumns("Comments.PostId", "=", "Posts.Id")
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Posts").WhereExists(sub))
+		sub := sqlk.NewQuery("Comments").Select("Id").WhereColumns("Comments.PostId", "=", "Posts.Id")
+		res := mustCompile(t, comp, sqlk.NewQuery("Posts").WhereExists(sub))
 		want := `SELECT * FROM "Posts" WHERE EXISTS (SELECT "Id" FROM "Comments" WHERE "Comments"."PostId" = "Posts"."Id")`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -1312,7 +1312,7 @@ func TestWhitelistExtension(t *testing.T) {
 		{
 			name: "custom operators work inside groups and condition subqueries",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Where("Type", "&&", "error").Select("Id")
+				sub := sqlk.NewQuery("Logs").Where("Type", "&&", "error").Select("Id")
 				return q.From("Users").
 					WhereGroup(func(n *sqlk.Query) *sqlk.Query {
 						return n.Where("A", "&&", 1)
@@ -1325,7 +1325,7 @@ func TestWhitelistExtension(t *testing.T) {
 	})
 
 	t.Run("extension applies only to the configured instance", func(t *testing.T) {
-		_, err := New().Compile(sqlk.NewQuery().From("Users").Where("A", "&&", 1))
+		_, err := New().Compile(sqlk.NewQuery("Users").Where("A", "&&", 1))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -1343,7 +1343,7 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("operator outside whitelist", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").Where("Age", "startswith", 18))
+		_, err := comp.Compile(sqlk.NewQuery("Users").Where("Age", "startswith", 18))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -1389,14 +1389,14 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("operator checks are case insensitive", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").Where("Name", "STAR*", "x"))
+		_, err := comp.Compile(sqlk.NewQuery("Users").Where("Name", "STAR*", "x"))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
 	})
 
 	t.Run("operator checks cover column-comparison conditions", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Table").WhereColumns("A", "startswith", "B"))
+		_, err := comp.Compile(sqlk.NewQuery("Table").WhereColumns("A", "startswith", "B"))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -1410,8 +1410,8 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("operator checks cover subquery-value conditions", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Logs").Select("Id")
-		_, err := comp.Compile(sqlk.NewQuery().From("Table").WhereSub(sub, "~!", 1))
+		sub := sqlk.NewQuery("Logs").Select("Id")
+		_, err := comp.Compile(sqlk.NewQuery("Table").WhereSub(sub, "~!", 1))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -1425,7 +1425,7 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("operator checks cover date-part conditions", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Table").WhereDatePart("year", "Stamp", "startswith", 2018))
+		_, err := comp.Compile(sqlk.NewQuery("Table").WhereDatePart("year", "Stamp", "startswith", 2018))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -1439,7 +1439,7 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("escape characters longer than one character are rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Table").WhereLike("A", "x", sqlk.EscapeLike("ab")))
+		_, err := comp.Compile(sqlk.NewQuery("Table").WhereLike("A", "x", sqlk.EscapeLike("ab")))
 		if !errors.Is(err, ErrInvalidEscapeCharacter) {
 			t.Fatalf("Compile(...) error = %v, want ErrInvalidEscapeCharacter", err)
 		}
@@ -1453,7 +1453,7 @@ func TestCompileValidation(t *testing.T) {
 	})
 
 	t.Run("escape character validation descends into groups", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Table").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
+		q := sqlk.NewQuery("Table").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
 			return n.WhereContains("A", "x", sqlk.EscapeLike(`\%`))
 		})
 		_, err := comp.Compile(q)
@@ -1466,14 +1466,14 @@ func TestCompileValidation(t *testing.T) {
 		// ESCAPE ''' would emit an invalid string literal; the single quote
 		// is rejected even though it is one rune (a Go-side check beyond the
 		// SqlKata baseline).
-		_, err := comp.Compile(sqlk.NewQuery().From("Table").WhereLike("A", "x", sqlk.EscapeLike("'")))
+		_, err := comp.Compile(sqlk.NewQuery("Table").WhereLike("A", "x", sqlk.EscapeLike("'")))
 		if !errors.Is(err, ErrInvalidEscapeCharacter) {
 			t.Fatalf("Compile(...) error = %v, want ErrInvalidEscapeCharacter", err)
 		}
 	})
 
 	t.Run("single multibyte rune passes as one character", func(t *testing.T) {
-		res, err := comp.Compile(sqlk.NewQuery().From("Table").WhereLike("A", "x", sqlk.EscapeLike("→")))
+		res, err := comp.Compile(sqlk.NewQuery("Table").WhereLike("A", "x", sqlk.EscapeLike("→")))
 		if err != nil {
 			t.Fatalf("Compile(...) error = %v, want nil", err)
 		}
@@ -1484,7 +1484,7 @@ func TestCompileValidation(t *testing.T) {
 
 	t.Run("like-family conditions compile without whitelist friction", func(t *testing.T) {
 		// starts/ends/contains map to like internally and skip the whitelist.
-		res, err := comp.Compile(sqlk.NewQuery().From("Table").
+		res, err := comp.Compile(sqlk.NewQuery("Table").
 			WhereStarts("A", "x").
 			WhereEnds("B", "y").
 			WhereContains("C", "z"))
@@ -1499,7 +1499,7 @@ func TestCompileValidation(t *testing.T) {
 	t.Run("validation descends into condition subqueries and groups", func(t *testing.T) {
 		t.Run("missing from target inside an in-subquery", func(t *testing.T) {
 			sub := sqlk.NewQuery().Select("Id")
-			_, err := comp.Compile(sqlk.NewQuery().From("Users").WhereInSub("Id", sub))
+			_, err := comp.Compile(sqlk.NewQuery("Users").WhereInSub("Id", sub))
 			if !errors.Is(err, ErrNoFromTarget) {
 				t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 			}
@@ -1507,14 +1507,14 @@ func TestCompileValidation(t *testing.T) {
 
 		t.Run("missing from target inside an exists subquery", func(t *testing.T) {
 			sub := sqlk.NewQuery().Select("Id")
-			_, err := comp.Compile(sqlk.NewQuery().From("Users").WhereExists(sub))
+			_, err := comp.Compile(sqlk.NewQuery("Users").WhereExists(sub))
 			if !errors.Is(err, ErrNoFromTarget) {
 				t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 			}
 		})
 
 		t.Run("operator outside whitelist inside a group", func(t *testing.T) {
-			q := sqlk.NewQuery().From("Users").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
+			q := sqlk.NewQuery("Users").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
 				return n.Where("A", "startswith", 1)
 			})
 			_, err := comp.Compile(q)
@@ -1524,8 +1524,8 @@ func TestCompileValidation(t *testing.T) {
 		})
 
 		t.Run("operator outside whitelist inside a where-sub subquery", func(t *testing.T) {
-			sub := sqlk.NewQuery().From("Logs").Where("Type", "startswith", "x").Select("Id")
-			_, err := comp.Compile(sqlk.NewQuery().From("Users").WhereSubEq(sub, 1))
+			sub := sqlk.NewQuery("Logs").Where("Type", "startswith", "x").Select("Id")
+			_, err := comp.Compile(sqlk.NewQuery("Users").WhereSubEq(sub, 1))
 			if !errors.Is(err, ErrOperatorNotAllowed) {
 				t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 			}
@@ -1534,7 +1534,7 @@ func TestCompileValidation(t *testing.T) {
 		t.Run("groups are not standalone selects and skip the from check", func(t *testing.T) {
 			// A group scope carries conditions only; having no from
 			// target is normal and must not fail validation.
-			res, err := comp.Compile(sqlk.NewQuery().From("Users").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
+			res, err := comp.Compile(sqlk.NewQuery("Users").WhereGroup(func(n *sqlk.Query) *sqlk.Query {
 				return n.WhereEq("A", 1)
 			}))
 			if err != nil {
@@ -1555,11 +1555,11 @@ func TestConditionClausesSurviveClone(t *testing.T) {
 	}
 
 	t.Run("groups and condition subqueries are cloned deeply", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
+		base := sqlk.NewQuery("Users").
 			WhereGroup(func(n *sqlk.Query) *sqlk.Query {
 				return n.WhereEq("A", 1).OrWhereEq("B", 2)
 			}).
-			WhereInSub("Id", sqlk.NewQuery().From("Logs").WhereEq("Type", "error").Select("UserId"))
+			WhereInSub("Id", sqlk.NewQuery("Logs").WhereEq("Type", "error").Select("UserId"))
 
 		variant := base.Clone().WhereEq("C", 3)
 		base.Limit(5)
@@ -1580,10 +1580,10 @@ func TestConditionClausesSurviveClone(t *testing.T) {
 	})
 
 	t.Run("like date and exists conditions survive clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
+		base := sqlk.NewQuery("Users").
 			WhereContains("Name", "oh").
 			WhereDatePart("year", "JoinedAt", ">", 2020).
-			WhereExists(sqlk.NewQuery().From("Logs").WhereEq("Type", "error").Select("UserId"))
+			WhereExists(sqlk.NewQuery("Logs").WhereEq("Type", "error").Select("UserId"))
 
 		variant := base.Clone().WhereEq("C", 3)
 		base.WhereEq("D", 4)
@@ -1608,55 +1608,55 @@ func TestCompileAggregateForms(t *testing.T) {
 	runCompileCases(t, New(), []compileCase{
 		{
 			name:  "count defaults to star",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount() },
 			sql:   `SELECT COUNT(*) AS "count" FROM "A"`,
 		},
 		{
 			name:  "count named column",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count("UserId") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount("UserId") },
 			sql:   `SELECT COUNT("UserId") AS "count" FROM "A"`,
 		},
 		{
 			name:  "count qualified column",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count("a.UserId") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount("a.UserId") },
 			sql:   `SELECT COUNT("a"."UserId") AS "count" FROM "A"`,
 		},
 		{
 			name:  "sum",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Sum("PacketsDropped") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsSum("PacketsDropped") },
 			sql:   `SELECT SUM("PacketsDropped") AS "sum" FROM "A"`,
 		},
 		{
 			name:  "avg",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Avg("TTL") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsAvg("TTL") },
 			sql:   `SELECT AVG("TTL") AS "avg" FROM "A"`,
 		},
 		{
 			name:  "max",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Max("LatencyMs") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsMax("LatencyMs") },
 			sql:   `SELECT MAX("LatencyMs") AS "max" FROM "A"`,
 		},
 		{
 			name:  "min",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Min("LatencyMs") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsMin("LatencyMs") },
 			sql:   `SELECT MIN("LatencyMs") AS "min" FROM "A"`,
 		},
 		{
 			name:  "generic aggregate verb",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Aggregate("sum", "Total") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsAggregate("sum", "Total") },
 			sql:   `SELECT SUM("Total") AS "sum" FROM "A"`,
 		},
 		{
 			name: "later aggregate replaces the earlier one",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Sum("Total").Count()
+				return q.From("A").AsSum("Total").AsCount()
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM "A"`,
 		},
 		{
 			name: "wheres are kept in aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Id", 1).Count()
+				return q.From("A").WhereEq("Id", 1).AsCount()
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM "A" WHERE "Id" = ?`,
 			args: []any{1},
@@ -1664,7 +1664,7 @@ func TestCompileAggregateForms(t *testing.T) {
 		{
 			name: "limit is dropped in aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Limit(10).Count()
+				return q.From("A").Limit(10).AsCount()
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM "A"`,
 		},
@@ -1675,37 +1675,37 @@ func TestCompileAggregateWrap(t *testing.T) {
 	runCompileCases(t, New(), []compileCase{
 		{
 			name:  "count over multiple columns wraps a subquery",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count("ColumnA", "ColumnB") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount("ColumnA", "ColumnB") },
 			sql:   `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "ColumnA" IS NOT NULL AND "ColumnB" IS NOT NULL) AS "countQuery"`,
 		},
 		{
 			name:  "distinct count wraps a subquery",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Distinct().Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Distinct().AsCount() },
 			sql:   `SELECT COUNT(*) AS "count" FROM (SELECT DISTINCT * FROM "A") AS "countQuery"`,
 		},
 		{
 			name: "distinct count over multiple columns wraps the aggregate columns",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Distinct().Count("ColumnA", "ColumnB")
+				return q.From("A").Distinct().AsCount("ColumnA", "ColumnB")
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM (SELECT DISTINCT "ColumnA", "ColumnB" FROM "A") AS "countQuery"`,
 		},
 		{
 			name:  "distinct single column still wraps",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Distinct().Count("X") },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Distinct().AsCount("X") },
 			sql:   `SELECT COUNT(*) AS "count" FROM (SELECT DISTINCT "X" FROM "A") AS "countQuery"`,
 		},
 		{
 			name: "wrap alias follows the aggregate type",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Aggregate("max", "Latency", "Uptime")
+				return q.From("A").AsAggregate("max", "Latency", "Uptime")
 			},
 			sql: `SELECT MAX(*) AS "max" FROM (SELECT 1 FROM "A" WHERE "Latency" IS NOT NULL AND "Uptime" IS NOT NULL) AS "maxQuery"`,
 		},
 		{
 			name: "inner query keeps its wheres before the not-null guards",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Id", 1).Count("CA", "CB")
+				return q.From("A").WhereEq("Id", 1).AsCount("CA", "CB")
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "Id" = ? AND "CA" IS NOT NULL AND "CB" IS NOT NULL) AS "countQuery"`,
 			args: []any{1},
@@ -1713,7 +1713,7 @@ func TestCompileAggregateWrap(t *testing.T) {
 		{
 			name: "distinct wrap keeps inner wheres",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Id", 1).Distinct().Count("CA")
+				return q.From("A").WhereEq("Id", 1).Distinct().AsCount("CA")
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM (SELECT DISTINCT "CA" FROM "A" WHERE "Id" = ?) AS "countQuery"`,
 			args: []any{1},
@@ -1721,14 +1721,14 @@ func TestCompileAggregateWrap(t *testing.T) {
 		{
 			name: "limit is dropped inside the wrapped inner query",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Limit(5).Distinct().Count()
+				return q.From("A").Limit(5).Distinct().AsCount()
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM (SELECT DISTINCT * FROM "A") AS "countQuery"`,
 		},
 		{
 			name: "select clauses are superseded by the aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Select("X").Count("CA", "CB")
+				return q.From("A").Select("X").AsCount("CA", "CB")
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "CA" IS NOT NULL AND "CB" IS NOT NULL) AS "countQuery"`,
 		},
@@ -1738,7 +1738,7 @@ func TestCompileAggregateWrap(t *testing.T) {
 		// The rewrite works on a copy: repeated compiles must not
 		// accumulate IS NOT NULL guards.
 		comp := New()
-		q := sqlk.NewQuery().From("A").Count("CA", "CB")
+		q := sqlk.NewQuery("A").AsCount("CA", "CB")
 		first := mustCompile(t, comp, q)
 		second := mustCompile(t, comp, q)
 		if first.SQL != second.SQL {
@@ -1755,21 +1755,21 @@ func TestCompileAggregateSubQueries(t *testing.T) {
 		{
 			name: "aggregate query as a scalar projection subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Count(), "LogCount")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").AsCount(), "LogCount")
 			},
 			sql: `SELECT (SELECT COUNT(*) AS "count" FROM "Logs") AS "LogCount" FROM "Users"`,
 		},
 		{
 			name: "distinct single-column aggregate subquery compiles to COUNT(DISTINCT ...)",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Distinct().Count("UserId"), "Authors")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Distinct().AsCount("UserId"), "Authors")
 			},
 			sql: `SELECT (SELECT COUNT(DISTINCT "UserId") AS "count" FROM "Logs") AS "Authors" FROM "Users"`,
 		},
 		{
 			name: "aggregate query as the from target",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromSub(sqlk.NewQuery().From("Logs").WhereEq("Type", "error").Count(), "T")
+				return q.FromSub(sqlk.NewQuery("Logs").WhereEq("Type", "error").AsCount(), "T")
 			},
 			sql:  `SELECT * FROM (SELECT COUNT(*) AS "count" FROM "Logs" WHERE "Type" = ?) AS "T"`,
 			args: []any{"error"},
@@ -1777,7 +1777,7 @@ func TestCompileAggregateSubQueries(t *testing.T) {
 		{
 			name: "aggregate subquery compared to a value",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereSub(sqlk.NewQuery().From("Logs").WhereEq("UserId", 1).Count(), ">", 10)
+				return q.From("Users").WhereSub(sqlk.NewQuery("Logs").WhereEq("UserId", 1).AsCount(), ">", 10)
 			},
 			sql:  `SELECT * FROM "Users" WHERE (SELECT COUNT(*) AS "count" FROM "Logs" WHERE "UserId" = ?) > ?`,
 			args: []any{1, 10},
@@ -1903,13 +1903,13 @@ func TestAggregateValidationAndClone(t *testing.T) {
 	comp := New()
 
 	t.Run("aggregate form still requires a from target", func(t *testing.T) {
-		if _, err := comp.Compile(sqlk.NewQuery().Count()); !errors.Is(err, ErrNoFromTarget) {
+		if _, err := comp.Compile(sqlk.NewQuery().AsCount()); !errors.Is(err, ErrNoFromTarget) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 		}
 	})
 
 	t.Run("filter operators go through the whitelist", func(t *testing.T) {
-		q := sqlk.NewQuery().From("A").SelectSum("Total", func(f *sqlk.Query) *sqlk.Query {
+		q := sqlk.NewQuery("A").SelectSum("Total", func(f *sqlk.Query) *sqlk.Query {
 			return f.Where("Country", "startswith", "U")
 		})
 		_, err := comp.Compile(q)
@@ -1926,14 +1926,14 @@ func TestAggregateValidationAndClone(t *testing.T) {
 	})
 
 	t.Run("aggregate clauses and filters survive clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("A").
-			Count("CA", "CB").
+		base := sqlk.NewQuery("A").
+			AsCount("CA", "CB").
 			SelectSum("Total", func(f *sqlk.Query) *sqlk.Query {
 				return f.WhereEq("Country", "US")
 			})
 
 		variant := base.Clone()
-		base.Sum("Other").WhereEq("Id", 1)
+		base.AsSum("Other").WhereEq("Id", 1)
 
 		wantVariant := `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "CA" IS NOT NULL AND "CB" IS NOT NULL) AS "countQuery"`
 		if got := mustCompile(t, comp, variant); got.SQL != wantVariant {
@@ -1950,7 +1950,7 @@ func TestAggregateValidationAndClone(t *testing.T) {
 
 	t.Run("cloned filters are independent of the original callback scope", func(t *testing.T) {
 		scope := sqlk.NewQuery().WhereEq("Country", "US")
-		q := sqlk.NewQuery().From("A").SelectAggregate("sum", "Total", func(f *sqlk.Query) *sqlk.Query {
+		q := sqlk.NewQuery("A").SelectAggregate("sum", "Total", func(f *sqlk.Query) *sqlk.Query {
 			return scope
 		})
 
@@ -2175,7 +2175,7 @@ func TestCompileHavingBetweenAndIn(t *testing.T) {
 		{
 			name: "having in subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Select("UserId")
+				sub := sqlk.NewQuery("Logs").Select("UserId")
 				return q.From("Users").HavingInSub("Id", sub)
 			},
 			sql: `SELECT * FROM "Users" HAVING "Id" IN (SELECT "UserId" FROM "Logs")`,
@@ -2183,7 +2183,7 @@ func TestCompileHavingBetweenAndIn(t *testing.T) {
 		{
 			name: "or having not in subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Select("UserId")
+				sub := sqlk.NewQuery("Logs").Select("UserId")
 				return q.From("Users").HavingEq("A", 1).OrHavingNotInSub("Id", sub)
 			},
 			sql:  `SELECT * FROM "Users" HAVING "A" = ? OR "Id" NOT IN (SELECT "UserId" FROM "Logs")`,
@@ -2192,7 +2192,7 @@ func TestCompileHavingBetweenAndIn(t *testing.T) {
 		{
 			name: "not in sub variant",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Select("UserId")
+				sub := sqlk.NewQuery("Logs").Select("UserId")
 				return q.From("Users").HavingNotInSub("Id", sub).OrHavingInSub("Ref", sub)
 			},
 			sql: `SELECT * FROM "Users" HAVING "Id" NOT IN (SELECT "UserId" FROM "Logs") OR "Ref" IN (SELECT "UserId" FROM "Logs")`,
@@ -2320,7 +2320,7 @@ func TestCompileHavingRawColumnsSubExistsDate(t *testing.T) {
 		{
 			name: "having sub and eq shorthand",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Select("Total")
+				sub := sqlk.NewQuery("Logs").Select("Total")
 				return q.From("Users").HavingSub(sub, ">", 100).HavingSubEq(sub, 50)
 			},
 			sql:  `SELECT * FROM "Users" HAVING (SELECT "Total" FROM "Logs") > ? AND (SELECT "Total" FROM "Logs") = ?`,
@@ -2329,7 +2329,7 @@ func TestCompileHavingRawColumnsSubExistsDate(t *testing.T) {
 		{
 			name: "or having sub",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").Select("Total")
+				sub := sqlk.NewQuery("Logs").Select("Total")
 				return q.From("Users").HavingEq("A", 1).OrHavingSub(sub, "<", 10).OrHavingSubEq(sub, 20)
 			},
 			sql:  `SELECT * FROM "Users" HAVING "A" = ? OR (SELECT "Total" FROM "Logs") < ? OR (SELECT "Total" FROM "Logs") = ?`,
@@ -2338,7 +2338,7 @@ func TestCompileHavingRawColumnsSubExistsDate(t *testing.T) {
 		{
 			name: "having exists omits the select list",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs").WhereEq("Type", "x")
+				sub := sqlk.NewQuery("Logs").WhereEq("Type", "x")
 				return q.From("Users").HavingExists(sub)
 			},
 			sql:  `SELECT * FROM "Users" HAVING EXISTS (SELECT 1 FROM "Logs" WHERE "Type" = ?)`,
@@ -2347,7 +2347,7 @@ func TestCompileHavingRawColumnsSubExistsDate(t *testing.T) {
 		{
 			name: "having not exists and or variants",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Logs")
+				sub := sqlk.NewQuery("Logs")
 				return q.From("Users").HavingNotExists(sub).OrHavingExists(sub).OrHavingNotExists(sub)
 			},
 			sql: `SELECT * FROM "Users" HAVING NOT EXISTS (SELECT 1 FROM "Logs") OR EXISTS (SELECT 1 FROM "Logs") OR NOT EXISTS (SELECT 1 FROM "Logs")`,
@@ -2419,7 +2419,7 @@ func TestCompileGroupByHaving(t *testing.T) {
 	comp := New()
 
 	t.Run("full group by and having SQL", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			Select("City").
 			GroupBy("City").
 			Having("Total", ">", 5)
@@ -2432,7 +2432,7 @@ func TestCompileGroupByHaving(t *testing.T) {
 	})
 
 	t.Run("sections keep the SQL order where, group, having, limit", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			Where("Age", ">", 18).
 			GroupBy("City").
 			Having("Total", ">", 100).
@@ -2446,7 +2446,7 @@ func TestCompileGroupByHaving(t *testing.T) {
 	})
 
 	t.Run("grouped aggregate projection keeps having on the same level", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			SelectSum("Total").
 			GroupBy("City").
 			Having("Total", ">", 10)
@@ -2458,7 +2458,7 @@ func TestCompileGroupByHaving(t *testing.T) {
 
 	// The aggregate rewrite drops the group section.
 	t.Run("count over a grouped query drops the group section", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").GroupBy("City").Count()
+		q := sqlk.NewQuery("Users").GroupBy("City").AsCount()
 		want := `SELECT COUNT(*) AS "count" FROM "Users"`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2466,10 +2466,10 @@ func TestCompileGroupByHaving(t *testing.T) {
 	})
 
 	t.Run("multi-column aggregate wrap strips groups but keeps havings inside", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			GroupBy("City").
 			Having("Total", ">", 5).
-			Count("CA", "CB")
+			AsCount("CA", "CB")
 		want := `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "Users" WHERE "CA" IS NOT NULL AND "CB" IS NOT NULL HAVING "Total" > ?) AS "countQuery"`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2477,7 +2477,7 @@ func TestCompileGroupByHaving(t *testing.T) {
 	})
 
 	t.Run("group and having clauses survive clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
+		base := sqlk.NewQuery("Users").
 			GroupBy("City").
 			Having("Total", ">", 5).
 			HavingGroup(func(n *sqlk.Query) *sqlk.Query {
@@ -2505,7 +2505,7 @@ func TestHavingValidation(t *testing.T) {
 	comp := New()
 
 	t.Run("operator outside whitelist in the having section", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").Having("Age", "startswith", 18))
+		_, err := comp.Compile(sqlk.NewQuery("Users").Having("Age", "startswith", 18))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -2519,7 +2519,7 @@ func TestHavingValidation(t *testing.T) {
 	})
 
 	t.Run("operator problems across where and having aggregate together", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			Where("A", "startswith", 1).
 			Having("B", "~!", 2)
 
@@ -2543,14 +2543,14 @@ func TestHavingValidation(t *testing.T) {
 	})
 
 	t.Run("escape characters longer than one character are rejected in having", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").HavingContains("A", "x", sqlk.EscapeLike("ab")))
+		_, err := comp.Compile(sqlk.NewQuery("Users").HavingContains("A", "x", sqlk.EscapeLike("ab")))
 		if !errors.Is(err, ErrInvalidEscapeCharacter) {
 			t.Fatalf("Compile(...) error = %v, want ErrInvalidEscapeCharacter", err)
 		}
 	})
 
 	t.Run("operator checks descend into having groups", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").HavingGroup(func(n *sqlk.Query) *sqlk.Query {
+		q := sqlk.NewQuery("Users").HavingGroup(func(n *sqlk.Query) *sqlk.Query {
 			return n.Where("A", "startswith", 1)
 		})
 		_, err := comp.Compile(q)
@@ -2561,7 +2561,7 @@ func TestHavingValidation(t *testing.T) {
 
 	t.Run("from checks descend into having in-subqueries", func(t *testing.T) {
 		sub := sqlk.NewQuery().Select("Id")
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").HavingInSub("Id", sub))
+		_, err := comp.Compile(sqlk.NewQuery("Users").HavingInSub("Id", sub))
 		if !errors.Is(err, ErrNoFromTarget) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 		}
@@ -2663,7 +2663,7 @@ func TestCompileOrderBy(t *testing.T) {
 		{
 			name: "order compiles inside subqueries",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").SelectSub(sqlk.NewQuery().From("Logs").Select("Id").OrderByDesc("CreatedAt"), "LastLog")
+				return q.From("Users").SelectSub(sqlk.NewQuery("Logs").Select("Id").OrderByDesc("CreatedAt"), "LastLog")
 			},
 			sql: `SELECT (SELECT "Id" FROM "Logs" ORDER BY "CreatedAt" DESC) AS "LastLog" FROM "Users"`,
 		},
@@ -2729,7 +2729,7 @@ func TestCompileOrderByRandom(t *testing.T) {
 		// compiler field replaces the default RANDOM().
 		comp := New()
 		comp.randomFunc = "NEWID()"
-		res := mustCompile(t, comp, sqlk.NewQuery().From("Users").OrderByRandom())
+		res := mustCompile(t, comp, sqlk.NewQuery("Users").OrderByRandom())
 		want := `SELECT * FROM "Users" ORDER BY NEWID()`
 		if res.SQL != want {
 			t.Errorf("SQL = %q, want %q", res.SQL, want)
@@ -2805,8 +2805,8 @@ func TestTakeSkipForPage(t *testing.T) {
 
 	t.Run("for page matches the explicit limit offset composition", func(t *testing.T) {
 		comp := New()
-		paged := mustCompile(t, comp, sqlk.NewQuery().From("Users").ForPage(4, 25))
-		explicit := mustCompile(t, comp, sqlk.NewQuery().From("Users").Limit(25).Offset(75))
+		paged := mustCompile(t, comp, sqlk.NewQuery("Users").ForPage(4, 25))
+		explicit := mustCompile(t, comp, sqlk.NewQuery("Users").Limit(25).Offset(75))
 		if paged.SQL != explicit.SQL {
 			t.Errorf("ForPage SQL = %q, want same as Limit/Offset %q", paged.SQL, explicit.SQL)
 		}
@@ -2820,7 +2820,7 @@ func TestAggregateFormStripsOrderAndGroup(t *testing.T) {
 	comp := New()
 
 	t.Run("order is dropped in aggregate form", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").OrderBy("Name").OrderByDesc("Age").Count()
+		q := sqlk.NewQuery("Users").OrderBy("Name").OrderByDesc("Age").AsCount()
 		want := `SELECT COUNT(*) AS "count" FROM "Users"`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2828,7 +2828,7 @@ func TestAggregateFormStripsOrderAndGroup(t *testing.T) {
 	})
 
 	t.Run("random and raw orders are dropped too", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").OrderByRandom().OrderByRaw("col1 desc").Sum("Total")
+		q := sqlk.NewQuery("Users").OrderByRandom().OrderByRaw("col1 desc").AsSum("Total")
 		want := `SELECT SUM("Total") AS "sum" FROM "Users"`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2836,10 +2836,10 @@ func TestAggregateFormStripsOrderAndGroup(t *testing.T) {
 	})
 
 	t.Run("order and group are stripped inside the wrapped inner query", func(t *testing.T) {
-		q := sqlk.NewQuery().From("Users").
+		q := sqlk.NewQuery("Users").
 			OrderBy("Name").
 			GroupBy("City").
-			Count("CA", "CB")
+			AsCount("CA", "CB")
 		want := `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "Users" WHERE "CA" IS NOT NULL AND "CB" IS NOT NULL) AS "countQuery"`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2849,9 +2849,9 @@ func TestAggregateFormStripsOrderAndGroup(t *testing.T) {
 	t.Run("orders survive in non-aggregate subqueries embedded in an aggregate query", func(t *testing.T) {
 		// Stripping touches only the query's own sections; orders inside
 		// an embedded exists subquery survive.
-		q := sqlk.NewQuery().From("Users").
-			WhereExists(sqlk.NewQuery().From("Logs").WhereEq("Type", "error").OrderBy("CreatedAt")).
-			Count()
+		q := sqlk.NewQuery("Users").
+			WhereExists(sqlk.NewQuery("Logs").WhereEq("Type", "error").OrderBy("CreatedAt")).
+			AsCount()
 		want := `SELECT COUNT(*) AS "count" FROM "Users" WHERE EXISTS (SELECT 1 FROM "Logs" WHERE "Type" = ? ORDER BY "CreatedAt")`
 		if got := mustCompile(t, comp, q); got.SQL != want {
 			t.Errorf("SQL = %q, want %q", got.SQL, want)
@@ -2867,7 +2867,7 @@ func TestOrderAndPaginationSurviveClone(t *testing.T) {
 	}
 
 	t.Run("order clauses are cloned deeply", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
+		base := sqlk.NewQuery("Users").
 			OrderBy("Name").
 			OrderByRaw("mod(Id, ?)", 2).
 			OrderByRandom()
@@ -2891,7 +2891,7 @@ func TestOrderAndPaginationSurviveClone(t *testing.T) {
 	})
 
 	t.Run("pagination set via for page survives clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").ForPage(2, 10)
+		base := sqlk.NewQuery("Users").ForPage(2, 10)
 
 		variant := base.Clone().Take(3)
 		base.Skip(30)
@@ -2993,7 +2993,7 @@ func TestCompileJoinSubQuery(t *testing.T) {
 		{
 			name: "subquery target with its own alias",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				stats := sqlk.NewQuery().From("Stats").Select("UserId", "Score").As("s")
+				stats := sqlk.NewQuery("Stats").Select("UserId", "Score").As("s")
 				return q.From("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
 					return j.On("s.UserId", "=", "Users.Id")
 				})
@@ -3003,7 +3003,7 @@ func TestCompileJoinSubQuery(t *testing.T) {
 		{
 			name: "left and right variants of subquery targets",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				stats := func() *sqlk.Query { return sqlk.NewQuery().From("Stats").Select("UserId").As("s") }
+				stats := func() *sqlk.Query { return sqlk.NewQuery("Stats").Select("UserId").As("s") }
 				return q.From("Users").
 					LeftJoinSub(stats(), func(j *sqlk.Join) *sqlk.Join { return j.On("s.UserId", "=", "Users.Id") }).
 					RightJoinSub(stats(), func(j *sqlk.Join) *sqlk.Join { return j.On("s.UserId", "<>", "Users.Id") })
@@ -3013,7 +3013,7 @@ func TestCompileJoinSubQuery(t *testing.T) {
 		{
 			name: "subquery bindings land before outer conditions",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				stats := sqlk.NewQuery().From("Stats").WhereEq("Kind", "daily").Select("UserId", "Score").As("s")
+				stats := sqlk.NewQuery("Stats").WhereEq("Kind", "daily").Select("UserId", "Score").As("s")
 				return q.From("Users").
 					JoinSub(stats, func(j *sqlk.Join) *sqlk.Join { return j.On("s.UserId", "=", "Users.Id") }).
 					WhereEq("Users.Active", true)
@@ -3024,7 +3024,7 @@ func TestCompileJoinSubQuery(t *testing.T) {
 		{
 			name: "subquery target is cloned at embed time",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				stats := sqlk.NewQuery().From("Stats").Select("UserId").As("s")
+				stats := sqlk.NewQuery("Stats").Select("UserId").As("s")
 				q.From("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
 					return j.On("s.UserId", "=", "Users.Id")
 				})
@@ -3036,7 +3036,7 @@ func TestCompileJoinSubQuery(t *testing.T) {
 		{
 			name: "joins compile inside subqueries",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				inner := sqlk.NewQuery().From("users").
+				inner := sqlk.NewQuery("users").
 					JoinEq("countries", "countries.id", "users.country_id").
 					Select("users.id")
 				return q.FromSub(inner, "uc")
@@ -3109,10 +3109,10 @@ func TestCompileJoinOnCallback(t *testing.T) {
 		{
 			name: "exists and in-subqueries work inside the ON scope",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				refs := sqlk.NewQuery().From("Refs").WhereColumns("Refs.UId", "=", "users.id")
+				refs := sqlk.NewQuery("Refs").WhereColumns("Refs.UId", "=", "users.id")
 				return q.From("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
 					return j.On("a", "=", "b").
-						WhereInSub("users.tier", sqlk.NewQuery().From("Tiers").Select("Id")).
+						WhereInSub("users.tier", sqlk.NewQuery("Tiers").Select("Id")).
 						WhereExists(refs)
 				})
 			},
@@ -3148,7 +3148,7 @@ func TestCompileJoinOnCallback(t *testing.T) {
 		{
 			name: "joins are kept in aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("users").JoinEq("countries", "countries.id", "users.country_id").Count()
+				return q.From("users").JoinEq("countries", "countries.id", "users.country_id").AsCount()
 			},
 			sql: "SELECT COUNT(*) AS \"count\" FROM \"users\" \nINNER JOIN \"countries\" ON \"countries\".\"id\" = \"users\".\"country_id\"",
 		},
@@ -3159,7 +3159,7 @@ func TestJoinValidation(t *testing.T) {
 	comp := New()
 
 	t.Run("operator outside whitelist inside the ON scope", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
+		_, err := comp.Compile(sqlk.NewQuery("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
 			return j.On("a", "startswith", "b")
 		}))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
@@ -3175,7 +3175,7 @@ func TestJoinValidation(t *testing.T) {
 	})
 
 	t.Run("operator checks cover the simple shorthand form", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("users").Join("countries", "a", "startswith", "b"))
+		_, err := comp.Compile(sqlk.NewQuery("users").Join("countries", "a", "startswith", "b"))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -3183,7 +3183,7 @@ func TestJoinValidation(t *testing.T) {
 
 	t.Run("missing from target inside a join subquery", func(t *testing.T) {
 		stats := sqlk.NewQuery().Select("UserId").As("s")
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
+		_, err := comp.Compile(sqlk.NewQuery("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
 			return j.On("s.UserId", "=", "Users.Id")
 		}))
 		if !errors.Is(err, ErrNoFromTarget) {
@@ -3192,8 +3192,8 @@ func TestJoinValidation(t *testing.T) {
 	})
 
 	t.Run("operator problems inside a join subquery are surfaced", func(t *testing.T) {
-		stats := sqlk.NewQuery().From("Stats").Where("Kind", "startswith", "x").Select("UserId").As("s")
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
+		stats := sqlk.NewQuery("Stats").Where("Kind", "startswith", "x").Select("UserId").As("s")
+		_, err := comp.Compile(sqlk.NewQuery("Users").JoinSub(stats, func(j *sqlk.Join) *sqlk.Join {
 			return j.On("s.UserId", "=", "Users.Id")
 		}))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
@@ -3202,7 +3202,7 @@ func TestJoinValidation(t *testing.T) {
 	})
 
 	t.Run("escape character validation descends into the ON scope", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
+		_, err := comp.Compile(sqlk.NewQuery("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
 			return j.WhereLike("a", "x", sqlk.EscapeLike("ab"))
 		}))
 		if !errors.Is(err, ErrInvalidEscapeCharacter) {
@@ -3211,7 +3211,7 @@ func TestJoinValidation(t *testing.T) {
 	})
 
 	t.Run("the join scope itself needs no from target", func(t *testing.T) {
-		res, err := comp.Compile(sqlk.NewQuery().From("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
+		res, err := comp.Compile(sqlk.NewQuery("users").JoinOn("countries", func(j *sqlk.Join) *sqlk.Join {
 			return j.On("a", "=", "b")
 		}))
 		if err != nil {
@@ -3231,9 +3231,9 @@ func TestJoinSurviveClone(t *testing.T) {
 	}
 
 	t.Run("joins with subquery targets are cloned deeply", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Users").
+		base := sqlk.NewQuery("Users").
 			JoinEq("Countries", "Countries.Id", "Users.CountryId").
-			JoinSub(sqlk.NewQuery().From("Stats").Select("UserId").As("s"), func(j *sqlk.Join) *sqlk.Join {
+			JoinSub(sqlk.NewQuery("Stats").Select("UserId").As("s"), func(j *sqlk.Join) *sqlk.Join {
 				return j.On("s.UserId", "=", "Users.Id").WhereEq("s.Score", 100)
 			})
 
@@ -3261,7 +3261,7 @@ func TestCompileCTEForms(t *testing.T) {
 		{
 			name: "query form hoists the CTE in front of the body",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").With("a", sqlk.NewQuery().From("B").Where("Id", ">", 5))
+				return q.From("A").With("a", sqlk.NewQuery("B").Where("Id", ">", 5))
 			},
 			sql:  "WITH \"a\" AS (SELECT * FROM \"B\" WHERE \"Id\" > ?)\nSELECT * FROM \"A\"",
 			args: []any{5},
@@ -3271,9 +3271,9 @@ func TestCompileCTEForms(t *testing.T) {
 			name: "multiple ctes keep declaration order",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("A").
-					With("A", sqlk.NewQuery().From("A")).
-					With("B", sqlk.NewQuery().From("B")).
-					With("C", sqlk.NewQuery().From("C"))
+					With("A", sqlk.NewQuery("A")).
+					With("B", sqlk.NewQuery("B")).
+					With("C", sqlk.NewQuery("C"))
 			},
 			sql: "WITH \"A\" AS (SELECT * FROM \"A\"),\n\"B\" AS (SELECT * FROM \"B\"),\n\"C\" AS (SELECT * FROM \"C\")\nSELECT * FROM \"A\"",
 		},
@@ -3343,7 +3343,7 @@ func TestCompileCTEForms(t *testing.T) {
 		{
 			name: "comment stays in front of the WITH clause",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Comment("trace").With("a", sqlk.NewQuery().From("B"))
+				return q.From("A").Comment("trace").With("a", sqlk.NewQuery("B"))
 			},
 			sql: "/* trace */ WITH \"a\" AS (SELECT * FROM \"B\")\nSELECT * FROM \"A\"",
 		},
@@ -3353,8 +3353,8 @@ func TestCompileCTEForms(t *testing.T) {
 func TestCompileCTECollection(t *testing.T) {
 	// CTEs defined inside other CTEs are collected and hoisted.
 	t.Run("cascaded cte dependencies are hoisted in front", func(t *testing.T) {
-		cte1 := sqlk.NewQuery().From("Table1").Select("Column1", "Column2").WhereEq("Column2", 1)
-		cte2 := sqlk.NewQuery().From("Table2").With("cte1", cte1).Select("Column3", "Column4")
+		cte1 := sqlk.NewQuery("Table1").Select("Column1", "Column2").WhereEq("Column2", 1)
+		cte2 := sqlk.NewQuery("Table2").With("cte1", cte1).Select("Column3", "Column4")
 		cte2.JoinEq("cte1", "Column1", "Column3")
 		cte2.WhereEq("Column4", 2)
 
@@ -3375,11 +3375,11 @@ func TestCompileCTECollection(t *testing.T) {
 
 	// A CTE referenced from several levels is emitted once.
 	t.Run("multi-referenced cte is emitted once", func(t *testing.T) {
-		cte1 := sqlk.NewQuery().From("Table1").Select("Column1", "Column2").WhereEq("Column2", 1)
-		cte2 := sqlk.NewQuery().From("Table2").With("cte1", cte1).Select("Column3", "Column4")
+		cte1 := sqlk.NewQuery("Table1").Select("Column1", "Column2").WhereEq("Column2", 1)
+		cte2 := sqlk.NewQuery("Table2").With("cte1", cte1).Select("Column3", "Column4")
 		cte2.JoinEq("cte1", "Column1", "Column3")
 		cte2.WhereEq("Column4", 2)
-		cte3 := sqlk.NewQuery().From("Table3").With("cte1", cte1).Select("Column3_3", "Column3_4")
+		cte3 := sqlk.NewQuery("Table3").With("cte1", cte1).Select("Column3_3", "Column3_4")
 		cte3.JoinEq("cte1", "Column1", "Column3_3")
 		cte3.WhereEq("Column3_4", 33)
 
@@ -3401,7 +3401,7 @@ func TestCompileCTECollection(t *testing.T) {
 	})
 
 	t.Run("cte defined inside a from-subquery is collected", func(t *testing.T) {
-		inner := sqlk.NewQuery().From("Seq").WithFunc("range", func(sq *sqlk.Query) *sqlk.Query {
+		inner := sqlk.NewQuery("Seq").WithFunc("range", func(sq *sqlk.Query) *sqlk.Query {
 			return sq.From("seqtbl").Select("Id").Where("Id", "<", 33)
 		}).Select("Id")
 		q := sqlk.NewQuery().FromSub(inner, "t")
@@ -3418,11 +3418,11 @@ func TestCompileCTECollection(t *testing.T) {
 	})
 
 	t.Run("cte defined inside a condition subquery is collected", func(t *testing.T) {
-		authors := sqlk.NewQuery().From("Users").Select("Name").WhereEq("Status", "Available").
+		authors := sqlk.NewQuery("Users").Select("Name").WhereEq("Status", "Available").
 			WithFunc("range", func(sq *sqlk.Query) *sqlk.Query {
 				return sq.From("seqtbl").Select("Id").Where("Id", "<", 33)
 			})
-		q := sqlk.NewQuery().From("Races").WhereInSub("RaceAuthor", authors).Where("Id", ">", 55)
+		q := sqlk.NewQuery("Races").WhereInSub("RaceAuthor", authors).Where("Id", ">", 55)
 
 		want := "WITH \"range\" AS (SELECT \"Id\" FROM \"seqtbl\" WHERE \"Id\" < ?)\n" +
 			"SELECT * FROM \"Races\" WHERE \"RaceAuthor\" IN (SELECT \"Name\" FROM \"Users\" WHERE \"Status\" = ?) AND \"Id\" > ?"
@@ -3436,8 +3436,8 @@ func TestCompileCTECollection(t *testing.T) {
 	})
 
 	t.Run("duplicate alias across levels is emitted once", func(t *testing.T) {
-		inner := sqlk.NewQuery().From("a").With("a", sqlk.NewQuery().From("Other"))
-		q := sqlk.NewQuery().With("a", sqlk.NewQuery().From("Log")).FromSub(inner, "t")
+		inner := sqlk.NewQuery("a").With("a", sqlk.NewQuery("Other"))
+		q := sqlk.NewQuery().With("a", sqlk.NewQuery("Log")).FromSub(inner, "t")
 
 		want := "WITH \"a\" AS (SELECT * FROM \"Log\")\nSELECT * FROM (SELECT * FROM \"a\") AS \"t\""
 		got := mustCompile(t, New(), q)
@@ -3447,10 +3447,10 @@ func TestCompileCTECollection(t *testing.T) {
 	})
 
 	t.Run("ctes survive the aggregate wrap transform", func(t *testing.T) {
-		q := sqlk.NewQuery().From("A").
-			With("a", sqlk.NewQuery().From("B").WhereEq("x", 1)).
+		q := sqlk.NewQuery("A").
+			With("a", sqlk.NewQuery("B").WhereEq("x", 1)).
 			Distinct().
-			Count("Col")
+			AsCount("Col")
 
 		want := "WITH \"a\" AS (SELECT * FROM \"B\" WHERE \"x\" = ?)\n" +
 			"SELECT COUNT(*) AS \"count\" FROM (SELECT DISTINCT \"Col\" FROM \"A\") AS \"countQuery\""
@@ -3464,9 +3464,9 @@ func TestCompileCTECollection(t *testing.T) {
 	})
 
 	t.Run("ctes survive Clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("A").With("a", sqlk.NewQuery().From("B").WhereEq("x", 1))
+		base := sqlk.NewQuery("A").With("a", sqlk.NewQuery("B").WhereEq("x", 1))
 		variant := base.Clone().WhereEq("y", 2)
-		base.With("extra", sqlk.NewQuery().From("C"))
+		base.With("extra", sqlk.NewQuery("C"))
 
 		want := "WITH \"a\" AS (SELECT * FROM \"B\" WHERE \"x\" = ?)\nSELECT * FROM \"A\" WHERE \"y\" = ?"
 		got := mustCompile(t, New(), variant)
@@ -3480,7 +3480,7 @@ func TestCTEValidation(t *testing.T) {
 	comp := New()
 
 	t.Run("missing alias is rejected", func(t *testing.T) {
-		q := sqlk.NewQuery().From("A").With("", sqlk.NewQuery().From("B"))
+		q := sqlk.NewQuery("A").With("", sqlk.NewQuery("B"))
 		_, err := comp.Compile(q)
 		if !errors.Is(err, ErrCTEMissingAlias) {
 			t.Fatalf("Compile(...) error = %v, want ErrCTEMissingAlias", err)
@@ -3488,7 +3488,7 @@ func TestCTEValidation(t *testing.T) {
 	})
 
 	t.Run("whitespace-only alias is rejected", func(t *testing.T) {
-		q := sqlk.NewQuery().From("A").WithRaw(" ", "SELECT 1")
+		q := sqlk.NewQuery("A").WithRaw(" ", "SELECT 1")
 		_, err := comp.Compile(q)
 		if !errors.Is(err, ErrCTEMissingAlias) {
 			t.Fatalf("Compile(...) error = %v, want ErrCTEMissingAlias", err)
@@ -3554,7 +3554,7 @@ func TestCTEValidation(t *testing.T) {
 	})
 
 	t.Run("cte problems aggregate with other compile problems", func(t *testing.T) {
-		q := sqlk.NewQuery().With("", sqlk.NewQuery().From("B")).Select("Id")
+		q := sqlk.NewQuery().With("", sqlk.NewQuery("B")).Select("Id")
 		_, err := comp.Compile(q)
 		if !errors.Is(err, ErrCTEMissingAlias) {
 			t.Errorf("errors.Is(err, ErrCTEMissingAlias) = false, want true (%v)", err)
@@ -3565,14 +3565,14 @@ func TestCTEValidation(t *testing.T) {
 	})
 
 	t.Run("cte body is validated recursively", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").WithFunc("a", func(sq *sqlk.Query) *sqlk.Query {
+		_, err := comp.Compile(sqlk.NewQuery("A").WithFunc("a", func(sq *sqlk.Query) *sqlk.Query {
 			return sq.From("B").Where("X", "~~", 1)
 		}))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
 
-		_, err = comp.Compile(sqlk.NewQuery().From("A").WithFunc("a", func(sq *sqlk.Query) *sqlk.Query {
+		_, err = comp.Compile(sqlk.NewQuery("A").WithFunc("a", func(sq *sqlk.Query) *sqlk.Query {
 			return sq.Select("x")
 		}))
 		if !errors.Is(err, ErrNoFromTarget) {
@@ -3586,39 +3586,39 @@ func TestCompileCombine(t *testing.T) {
 		{
 			// Members concatenate as bare SELECTs with no parentheses.
 			name:  "union",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Union(sqlk.NewQuery().From("Laptops")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Union(sqlk.NewQuery("Laptops")) },
 			sql:   `SELECT * FROM "Phones" UNION SELECT * FROM "Laptops"`,
 		},
 		{
 			name:  "union all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").UnionAll(sqlk.NewQuery().From("Laptops")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").UnionAll(sqlk.NewQuery("Laptops")) },
 			sql:   `SELECT * FROM "Phones" UNION ALL SELECT * FROM "Laptops"`,
 		},
 		{
 			name:  "except",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Except(sqlk.NewQuery().From("Tablets")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Except(sqlk.NewQuery("Tablets")) },
 			sql:   `SELECT * FROM "Phones" EXCEPT SELECT * FROM "Tablets"`,
 		},
 		{
 			name:  "except all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").ExceptAll(sqlk.NewQuery().From("Tablets")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").ExceptAll(sqlk.NewQuery("Tablets")) },
 			sql:   `SELECT * FROM "Phones" EXCEPT ALL SELECT * FROM "Tablets"`,
 		},
 		{
 			name:  "intersect",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Intersect(sqlk.NewQuery().From("Tablets")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").Intersect(sqlk.NewQuery("Tablets")) },
 			sql:   `SELECT * FROM "Phones" INTERSECT SELECT * FROM "Tablets"`,
 		},
 		{
 			name:  "intersect all",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").IntersectAll(sqlk.NewQuery().From("Tablets")) },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Phones").IntersectAll(sqlk.NewQuery("Tablets")) },
 			sql:   `SELECT * FROM "Phones" INTERSECT ALL SELECT * FROM "Tablets"`,
 		},
 		{
 			// Combine is the shared base of the combine verb family.
 			name: "combine verb with operation and all flag",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Phones").Combine("union", true, sqlk.NewQuery().From("Laptops"))
+				return q.From("Phones").Combine("union", true, sqlk.NewQuery("Laptops"))
 			},
 			sql: `SELECT * FROM "Phones" UNION ALL SELECT * FROM "Laptops"`,
 		},
@@ -3627,7 +3627,7 @@ func TestCompileCombine(t *testing.T) {
 			name: "member bindings follow main query bindings",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Phones").Where("Price", "<", 3000).
-					Union(sqlk.NewQuery().From("Laptops").WhereEq("Type", "A"))
+					Union(sqlk.NewQuery("Laptops").WhereEq("Type", "A"))
 			},
 			sql:  `SELECT * FROM "Phones" WHERE "Price" < ? UNION SELECT * FROM "Laptops" WHERE "Type" = ?`,
 			args: []any{3000, "A"},
@@ -3637,8 +3637,8 @@ func TestCompileCombine(t *testing.T) {
 			name: "multiple combines keep call order",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Phones").
-					Union(sqlk.NewQuery().From("Laptops")).
-					Union(sqlk.NewQuery().From("Tablets"))
+					Union(sqlk.NewQuery("Laptops")).
+					Union(sqlk.NewQuery("Tablets"))
 			},
 			sql: `SELECT * FROM "Phones" UNION SELECT * FROM "Laptops" UNION SELECT * FROM "Tablets"`,
 		},
@@ -3697,7 +3697,7 @@ func TestCompileCombine(t *testing.T) {
 			name: "query members mix with raw members",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Phones").Where("Price", "<", 3000).
-					Union(sqlk.NewQuery().From("Laptops")).
+					Union(sqlk.NewQuery("Laptops")).
 					ExceptRaw("EXCEPT SELECT * FROM {Archived} WHERE [Year] < ?", 2020)
 			},
 			sql:  `SELECT * FROM "Phones" WHERE "Price" < ? UNION SELECT * FROM "Laptops" EXCEPT SELECT * FROM "Archived" WHERE "Year" < ?`,
@@ -3707,7 +3707,7 @@ func TestCompileCombine(t *testing.T) {
 			// A member's own projection and order compile with the member.
 			name: "member keeps its own projection and order",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				member := sqlk.NewQuery().From("Laptops").Select("Brand").OrderBy("Price")
+				member := sqlk.NewQuery("Laptops").Select("Brand").OrderBy("Price")
 				return q.From("Phones").Union(member)
 			},
 			sql: `SELECT * FROM "Phones" UNION SELECT "Brand" FROM "Laptops" ORDER BY "Price"`,
@@ -3716,7 +3716,7 @@ func TestCompileCombine(t *testing.T) {
 			// Nested combines flatten into a single sequence.
 			name: "nested combine member",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				member := sqlk.NewQuery().From("B").Union(sqlk.NewQuery().From("C"))
+				member := sqlk.NewQuery("B").Union(sqlk.NewQuery("C"))
 				return q.From("A").Union(member)
 			},
 			sql: `SELECT * FROM "A" UNION SELECT * FROM "B" UNION SELECT * FROM "C"`,
@@ -3725,7 +3725,7 @@ func TestCompileCombine(t *testing.T) {
 			// A single-column aggregate compiles as is and keeps its combines.
 			name: "aggregate main query keeps its combines",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Phones").Union(sqlk.NewQuery().From("Laptops")).Count()
+				return q.From("Phones").Union(sqlk.NewQuery("Laptops")).AsCount()
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM "Phones" UNION SELECT * FROM "Laptops"`,
 		},
@@ -3733,7 +3733,7 @@ func TestCompileCombine(t *testing.T) {
 			// The main query's pagination section precedes the combines.
 			name: "main pagination precedes the combine section",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Phones").Limit(5).Union(sqlk.NewQuery().From("Laptops"))
+				return q.From("Phones").Limit(5).Union(sqlk.NewQuery("Laptops"))
 			},
 			sql:  `SELECT * FROM "Phones" LIMIT ? UNION SELECT * FROM "Laptops"`,
 			args: []any{5},
@@ -3744,9 +3744,9 @@ func TestCompileCombine(t *testing.T) {
 func TestCompileCombinePaginationAndCTE(t *testing.T) {
 	// A paginated member compiles with its own pagination inline.
 	t.Run("paginated member keeps its own limit offset", func(t *testing.T) {
-		tablets := sqlk.NewQuery().From("Tablets").Where("Price", ">", 2000).ForPage(2)
-		q := sqlk.NewQuery().From("Phones").Where("Price", "<", 3000).
-			Union(sqlk.NewQuery().From("Laptops").Where("Price", ">", 1000)).
+		tablets := sqlk.NewQuery("Tablets").Where("Price", ">", 2000).ForPage(2)
+		q := sqlk.NewQuery("Phones").Where("Price", "<", 3000).
+			Union(sqlk.NewQuery("Laptops").Where("Price", ">", 1000)).
 			UnionAll(tablets)
 
 		want := `SELECT * FROM "Phones" WHERE "Price" < ? UNION SELECT * FROM "Laptops" WHERE "Price" > ? ` +
@@ -3764,9 +3764,9 @@ func TestCompileCombinePaginationAndCTE(t *testing.T) {
 	// tree and hoisted to the outer WITH, with their bindings first.
 	t.Run("member cte is hoisted to the outer with clause", func(t *testing.T) {
 		member := sqlk.NewQuery().
-			With("cheap", sqlk.NewQuery().From("Deals").Where("Price", "<", 800)).
+			With("cheap", sqlk.NewQuery("Deals").Where("Price", "<", 800)).
 			From("cheap").WhereEq("Kind", "gaming")
-		q := sqlk.NewQuery().From("Phones").WhereEq("Brand", "y").Union(member)
+		q := sqlk.NewQuery("Phones").WhereEq("Brand", "y").Union(member)
 
 		want := "WITH \"cheap\" AS (SELECT * FROM \"Deals\" WHERE \"Price\" < ?)\n" +
 			"SELECT * FROM \"Phones\" WHERE \"Brand\" = ? UNION SELECT * FROM \"cheap\" WHERE \"Kind\" = ?"
@@ -3782,8 +3782,8 @@ func TestCompileCombinePaginationAndCTE(t *testing.T) {
 	// A CTE alias shared by the main query and a member is emitted once;
 	// the first occurrence wins.
 	t.Run("duplicate alias between main query and member is emitted once", func(t *testing.T) {
-		member := sqlk.NewQuery().With("c1", sqlk.NewQuery().From("Other")).From("c1")
-		q := sqlk.NewQuery().With("c1", sqlk.NewQuery().From("Log")).From("c1").Union(member)
+		member := sqlk.NewQuery().With("c1", sqlk.NewQuery("Other")).From("c1")
+		q := sqlk.NewQuery().With("c1", sqlk.NewQuery("Log")).From("c1").Union(member)
 
 		want := "WITH \"c1\" AS (SELECT * FROM \"Log\")\n" +
 			"SELECT * FROM \"c1\" UNION SELECT * FROM \"c1\""
@@ -3800,15 +3800,15 @@ func TestCombineValidationAndClone(t *testing.T) {
 	// Members are standalone SELECTs: from-target and operator checks
 	// descend into them.
 	t.Run("member without from target is rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").Union(sqlk.NewQuery().Select("x")))
+		_, err := comp.Compile(sqlk.NewQuery("A").Union(sqlk.NewQuery().Select("x")))
 		if !errors.Is(err, ErrNoFromTarget) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 		}
 	})
 
 	t.Run("member operator problems are rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").Union(
-			sqlk.NewQuery().From("B").Where("X", "~~", 1)))
+		_, err := comp.Compile(sqlk.NewQuery("A").Union(
+			sqlk.NewQuery("B").Where("X", "~~", 1)))
 		if !errors.Is(err, ErrOperatorNotAllowed) {
 			t.Fatalf("Compile(...) error = %v, want ErrOperatorNotAllowed", err)
 		}
@@ -3816,8 +3816,8 @@ func TestCombineValidationAndClone(t *testing.T) {
 
 	// Members of nested combines are validated recursively too.
 	t.Run("nested member problems are rejected", func(t *testing.T) {
-		inner := sqlk.NewQuery().From("B").Union(sqlk.NewQuery().Select("x"))
-		_, err := comp.Compile(sqlk.NewQuery().From("A").Union(inner))
+		inner := sqlk.NewQuery("B").Union(sqlk.NewQuery().Select("x"))
+		_, err := comp.Compile(sqlk.NewQuery("A").Union(inner))
 		if !errors.Is(err, ErrNoFromTarget) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 		}
@@ -3825,8 +3825,8 @@ func TestCombineValidationAndClone(t *testing.T) {
 
 	// Members are deep-copied at embed time.
 	t.Run("member is deep-copied at embed time", func(t *testing.T) {
-		member := sqlk.NewQuery().From("Laptops")
-		q := sqlk.NewQuery().From("Phones").Union(member)
+		member := sqlk.NewQuery("Laptops")
+		q := sqlk.NewQuery("Phones").Union(member)
 		member.WhereEq("Type", "A")
 
 		want := `SELECT * FROM "Phones" UNION SELECT * FROM "Laptops"`
@@ -3838,9 +3838,9 @@ func TestCombineValidationAndClone(t *testing.T) {
 
 	// Clone deep-copies combine clauses.
 	t.Run("combines survive Clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("A").Union(sqlk.NewQuery().From("B").WhereEq("x", 1))
+		base := sqlk.NewQuery("A").Union(sqlk.NewQuery("B").WhereEq("x", 1))
 		variant := base.Clone().WhereEq("y", 2)
-		base.Union(sqlk.NewQuery().From("C"))
+		base.Union(sqlk.NewQuery("C"))
 
 		want := `SELECT * FROM "A" WHERE "y" = ? UNION SELECT * FROM "B" WHERE "x" = ?`
 		got := mustCompile(t, New(), variant)
@@ -3860,7 +3860,7 @@ func TestCompileInsert(t *testing.T) {
 			// since Go map iteration is unordered.
 			name: "key-value form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Insert(sqlk.Record{"Name": "The User", "Age": 18})
+				return q.From("Table").AsInsert(sqlk.Record{"Name": "The User", "Age": 18})
 			},
 			sql:  `INSERT INTO "Table" ("Age", "Name") VALUES (?, ?)`,
 			args: []any{18, "The User"},
@@ -3869,7 +3869,7 @@ func TestCompileInsert(t *testing.T) {
 			// NULL is expressed as a parameter placeholder.
 			name: "null value is parameterized",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Books").InsertColumns([]string{"Id", "Author", "ISBN", "Date"},
+				return q.From("Books").AsInsertColumns([]string{"Id", "Author", "ISBN", "Date"},
 					[]any{1, "Author 1", "123456", nil})
 			},
 			sql:  `INSERT INTO "Books" ("Id", "Author", "ISBN", "Date") VALUES (?, ?, ?, ?)`,
@@ -3880,7 +3880,7 @@ func TestCompileInsert(t *testing.T) {
 			// no last-id statement and appends nothing.
 			name: "return id flag without dialect last id",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Table").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Table" ("Name") VALUES (?)`,
 			args: []any{"x"},
@@ -3889,7 +3889,7 @@ func TestCompileInsert(t *testing.T) {
 			// A raw from target passes through verbatim.
 			name: "raw from target",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromRaw("Table.With.Dots").Insert(sqlk.Record{"Name": "The User"})
+				return q.FromRaw("Table.With.Dots").AsInsert(sqlk.Record{"Name": "The User"})
 			},
 			sql:  `INSERT INTO Table.With.Dots ("Name") VALUES (?)`,
 			args: []any{"The User"},
@@ -3898,7 +3898,7 @@ func TestCompileInsert(t *testing.T) {
 			// Multiple rows share one column list.
 			name: "multi-row values",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("expensive_cars").InsertRows([]string{"name", "brand", "year"},
+				return q.From("expensive_cars").AsInsertRows([]string{"name", "brand", "year"},
 					[]any{"Chiron", "Bugatti", nil},
 					[]any{"Huayra", "Pagani", 2012},
 					[]any{"Reventon roadster", "Lamborghini", 2009})
@@ -3910,8 +3910,8 @@ func TestCompileInsert(t *testing.T) {
 			// insert into select, with the subquery's own pagination inline.
 			name: "insert from query",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("expensive_cars").InsertFrom([]string{"name", "model", "year"},
-					sqlk.NewQuery().From("cars").Where("price", ">", 100).ForPage(2, 10))
+				return q.From("expensive_cars").AsInsertFrom([]string{"name", "model", "year"},
+					sqlk.NewQuery("cars").Where("price", ">", 100).ForPage(2, 10))
 			},
 			sql:  `INSERT INTO "expensive_cars" ("name", "model", "year") SELECT * FROM "cars" WHERE "price" > ? LIMIT ? OFFSET ?`,
 			args: []any{100, 10, int64(10)},
@@ -3920,7 +3920,7 @@ func TestCompileInsert(t *testing.T) {
 			// An empty column list produces no column section.
 			name: "insert from query without columns",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Logs").InsertFrom(nil, sqlk.NewQuery().From("Events"))
+				return q.From("Logs").AsInsertFrom(nil, sqlk.NewQuery("Events"))
 			},
 			sql: `INSERT INTO "Logs" SELECT * FROM "Events"`,
 		},
@@ -3928,7 +3928,7 @@ func TestCompileInsert(t *testing.T) {
 			// Repeated calls keep the last one.
 			name: "repeated insert replaces",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Insert(sqlk.Record{"A": 1}).Insert(sqlk.Record{"B": 2})
+				return q.From("Table").AsInsert(sqlk.Record{"A": 1}).AsInsert(sqlk.Record{"B": 2})
 			},
 			sql:  `INSERT INTO "Table" ("B") VALUES (?)`,
 			args: []any{2},
@@ -3937,7 +3937,7 @@ func TestCompileInsert(t *testing.T) {
 			// The method switches; the stale update clauses are not read.
 			name: "insert after update switches method",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Update(sqlk.Record{"A": 1}).Insert(sqlk.Record{"B": 2})
+				return q.From("Table").AsUpdate(sqlk.Record{"A": 1}).AsInsert(sqlk.Record{"B": 2})
 			},
 			sql:  `INSERT INTO "Table" ("B") VALUES (?)`,
 			args: []any{2},
@@ -3946,7 +3946,7 @@ func TestCompileInsert(t *testing.T) {
 			// Query clauses such as WHERE do not participate in INSERT.
 			name: "where clauses do not leak into insert",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").WhereEq("Id", 1).Insert(sqlk.Record{"A": 1})
+				return q.From("Table").WhereEq("Id", 1).AsInsert(sqlk.Record{"A": 1})
 			},
 			sql:  `INSERT INTO "Table" ("A") VALUES (?)`,
 			args: []any{1},
@@ -3958,10 +3958,10 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 	// CTE hoisting applies to write verbs too; CTE bindings precede the
 	// write values.
 	t.Run("cte prefixes insert from query", func(t *testing.T) {
-		q := sqlk.NewQuery().From("expensive_cars").
-			With("old_cards", sqlk.NewQuery().From("all_cars").Where("year", "<", 2000)).
-			InsertFrom([]string{"name", "model", "year"},
-				sqlk.NewQuery().From("old_cars").Where("price", ">", 100))
+		q := sqlk.NewQuery("expensive_cars").
+			With("old_cards", sqlk.NewQuery("all_cars").Where("year", "<", 2000)).
+			AsInsertFrom([]string{"name", "model", "year"},
+				sqlk.NewQuery("old_cars").Where("price", ">", 100))
 
 		want := "WITH \"old_cards\" AS (SELECT * FROM \"all_cars\" WHERE \"year\" < ?)\n" +
 			"INSERT INTO \"expensive_cars\" (\"name\", \"model\", \"year\") SELECT * FROM \"old_cars\" WHERE \"price\" > ?"
@@ -3976,8 +3976,8 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 
 	// The insert-from subquery is deep-copied at embed time.
 	t.Run("insert-from member is deep-copied at embed time", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Source")
-		q := sqlk.NewQuery().From("Target").InsertFrom([]string{"a"}, sub)
+		sub := sqlk.NewQuery("Source")
+		q := sqlk.NewQuery("Target").AsInsertFrom([]string{"a"}, sub)
 		sub.WhereEq("x", 1)
 
 		want := `INSERT INTO "Target" ("a") SELECT * FROM "Source"`
@@ -3990,7 +3990,7 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 	// Key-value pairs fold at call time; later map edits do not leak in.
 	t.Run("insert map is snapshotted at call time", func(t *testing.T) {
 		data := sqlk.Record{"A": 1}
-		q := sqlk.NewQuery().From("Table").Insert(data)
+		q := sqlk.NewQuery("Table").AsInsert(data)
 		data["B"] = 2
 
 		want := `INSERT INTO "Table" ("A") VALUES (?)`
@@ -4002,9 +4002,9 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 
 	// Clone deep-copies write clauses.
 	t.Run("insert clauses survive Clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Table").Insert(sqlk.Record{"A": 1})
+		base := sqlk.NewQuery("Table").AsInsert(sqlk.Record{"A": 1})
 		variant := base.Clone()
-		base.Insert(sqlk.Record{"B": 2})
+		base.AsInsert(sqlk.Record{"B": 2})
 
 		want := `INSERT INTO "Table" ("A") VALUES (?)`
 		got := mustCompile(t, New(), variant)
@@ -4019,8 +4019,8 @@ func TestCompileInsertCTEAndClone(t *testing.T) {
 // rejects the clause outside insert queries as well.
 func TestCompileInsertOnConflictValidation(t *testing.T) {
 	t.Run("base compiler rejects the clause", func(t *testing.T) {
-		_, err := New().Compile(sqlk.NewQuery().From("Table").
-			Insert(sqlk.Record{"A": 1}).OnConflict("A"))
+		_, err := New().Compile(sqlk.NewQuery("Table").
+			AsInsert(sqlk.Record{"A": 1}).OnConflict("A"))
 		if !errors.Is(err, ErrConflictNotSupported) {
 			t.Fatalf("Compile(...) error = %v, want ErrConflictNotSupported", err)
 		}
@@ -4037,11 +4037,11 @@ func TestCompileInsertOnConflictValidation(t *testing.T) {
 			},
 			{
 				name:  "update",
-				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Update(sqlk.Record{"x": 1}).OnConflict("x") },
+				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsUpdate(sqlk.Record{"x": 1}).OnConflict("x") },
 			},
 			{
 				name:  "delete",
-				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Delete().OnConflict("x") },
+				build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsDelete().OnConflict("x") },
 			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
@@ -4054,8 +4054,8 @@ func TestCompileInsertOnConflictValidation(t *testing.T) {
 	})
 
 	t.Run("empty column set is rejected", func(t *testing.T) {
-		_, err := NewMysql().Compile(sqlk.NewQuery().From("Table").
-			Insert(sqlk.Record{"A": 1}).OnConflict())
+		_, err := NewMysql().Compile(sqlk.NewQuery("Table").
+			AsInsert(sqlk.Record{"A": 1}).OnConflict())
 		if !errors.Is(err, ErrInvalidWriteValues) {
 			t.Fatalf("Compile(...) error = %v, want ErrInvalidWriteValues", err)
 		}
@@ -4064,7 +4064,7 @@ func TestCompileInsertOnConflictValidation(t *testing.T) {
 	// Clone deep-copies the conflict clause: later calls on the base do not
 	// leak into the variant.
 	t.Run("conflict clause survives Clone", func(t *testing.T) {
-		base := sqlk.NewQuery().From("Table").Insert(sqlk.Record{"A": 1}).OnConflict("A")
+		base := sqlk.NewQuery("Table").AsInsert(sqlk.Record{"A": 1}).OnConflict("A")
 		variant := base.Clone()
 		base.OnConflict("B")
 
@@ -4082,7 +4082,7 @@ func TestCompileUpdate(t *testing.T) {
 			// Map keys fold into assignments in sorted key order.
 			name: "key-value form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Update(sqlk.Record{"Name": "The User", "Age": 18})
+				return q.From("Table").AsUpdate(sqlk.Record{"Name": "The User", "Age": 18})
 			},
 			sql:  `UPDATE "Table" SET "Age" = ?, "Name" = ?`,
 			args: []any{18, "The User"},
@@ -4091,7 +4091,7 @@ func TestCompileUpdate(t *testing.T) {
 			// NULL values are parameterized like any other value.
 			name: "columns and values with where",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Books").WhereEq("Id", 1).UpdateColumns(
+				return q.From("Books").WhereEq("Id", 1).AsUpdateColumns(
 					[]string{"Author", "Date", "Version"}, []any{"Author 1", nil, nil})
 			},
 			sql:  `UPDATE "Books" SET "Author" = ?, "Date" = ?, "Version" = ? WHERE "Id" = ?`,
@@ -4100,7 +4100,7 @@ func TestCompileUpdate(t *testing.T) {
 		{
 			name: "raw from target",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.FromRaw("Table.With.Dots").Update(sqlk.Record{"Name": "The User"})
+				return q.FromRaw("Table.With.Dots").AsUpdate(sqlk.Record{"Name": "The User"})
 			},
 			sql:  `UPDATE Table.With.Dots SET "Name" = ?`,
 			args: []any{"The User"},
@@ -4109,25 +4109,25 @@ func TestCompileUpdate(t *testing.T) {
 			// The default increment is 1.
 			name: "increment defaults to one",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Increment("Total")
+				return q.From("Table").AsIncrement("Total")
 			},
 			sql:  `UPDATE "Table" SET "Total" = "Total" + ?`,
 			args: []any{1},
 		},
 		{
-			// Increment with an explicit amount and wheres.
+			// AsIncrement with an explicit amount and wheres.
 			name: "increment with amount and wheres",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").WhereEq("Name", "A").Increment("Total", 2)
+				return q.From("Table").WhereEq("Name", "A").AsIncrement("Total", 2)
 			},
 			sql:  `UPDATE "Table" SET "Total" = "Total" + ? WHERE "Name" = ?`,
 			args: []any{2, "A"},
 		},
 		{
-			// Decrement compiles to a minus with a positive amount argument.
+			// AsDecrement compiles to a minus with a positive amount argument.
 			name: "decrement with amount and wheres",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").WhereEq("Name", "A").Decrement("Total", 2)
+				return q.From("Table").WhereEq("Name", "A").AsDecrement("Total", 2)
 			},
 			sql:  `UPDATE "Table" SET "Total" = "Total" - ? WHERE "Name" = ?`,
 			args: []any{2, "A"},
@@ -4135,25 +4135,25 @@ func TestCompileUpdate(t *testing.T) {
 		{
 			name: "decrement defaults to one",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Decrement("Total")
+				return q.From("Table").AsDecrement("Total")
 			},
 			sql:  `UPDATE "Table" SET "Total" = "Total" - ?`,
 			args: []any{1},
 		},
 		{
-			// Increment replaces any previous update set.
+			// AsIncrement replaces any previous update set.
 			name: "increment replaces a previous update set",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Update(sqlk.Record{"A": 1}).Increment("Total")
+				return q.From("Table").AsUpdate(sqlk.Record{"A": 1}).AsIncrement("Total")
 			},
 			sql:  `UPDATE "Table" SET "Total" = "Total" + ?`,
 			args: []any{1},
 		},
 		{
-			// Update replaces a previous increment set.
+			// AsUpdate replaces a previous increment set.
 			name: "update replaces a previous increment",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Increment("Total").Update(sqlk.Record{"A": 1})
+				return q.From("Table").AsIncrement("Total").AsUpdate(sqlk.Record{"A": 1})
 			},
 			sql:  `UPDATE "Table" SET "A" = ?`,
 			args: []any{1},
@@ -4163,9 +4163,9 @@ func TestCompileUpdate(t *testing.T) {
 			name: "cte prefixes update",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Books").
-					With("OldBooks", sqlk.NewQuery().From("Books").Where("Date", "<", 2000)).
+					With("OldBooks", sqlk.NewQuery("Books").Where("Date", "<", 2000)).
 					Where("Price", ">", 100).
-					Update(sqlk.Record{"Price": 150})
+					AsUpdate(sqlk.Record{"Price": 150})
 			},
 			sql:  "WITH \"OldBooks\" AS (SELECT * FROM \"Books\" WHERE \"Date\" < ?)\nUPDATE \"Books\" SET \"Price\" = ? WHERE \"Price\" > ?",
 			args: []any{2000, 150, 100},
@@ -4178,13 +4178,13 @@ func TestCompileDelete(t *testing.T) {
 		{
 			// A plain delete keeps the base shape.
 			name:  "basic delete",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Posts").Delete() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("Posts").AsDelete() },
 			sql:   `DELETE FROM "Posts"`,
 		},
 		{
 			name: "delete with where",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Posts").WhereEq("Id", 5).Delete()
+				return q.From("Posts").WhereEq("Id", 5).AsDelete()
 			},
 			sql:  `DELETE FROM "Posts" WHERE "Id" = ?`,
 			args: []any{5},
@@ -4198,7 +4198,7 @@ func TestCompileDelete(t *testing.T) {
 				return q.From("Posts").
 					Join("Authors", "Authors.Id", "=", "Posts.AuthorId").
 					WhereEq("Authors.Id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  `DELETE "Posts" FROM "Posts" ` + "\n" + `INNER JOIN "Authors" ON "Authors"."Id" = "Posts"."AuthorId" WHERE "Authors"."Id" = ?`,
 			args: []any{5},
@@ -4210,7 +4210,7 @@ func TestCompileDelete(t *testing.T) {
 				return q.From("Posts as P").
 					Join("Authors", "Authors.Id", "=", "P.AuthorId").
 					WhereEq("Authors.Id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  `DELETE "P" FROM "Posts" AS "P" ` + "\n" + `INNER JOIN "Authors" ON "Authors"."Id" = "P"."AuthorId" WHERE "Authors"."Id" = ?`,
 			args: []any{5},
@@ -4222,7 +4222,7 @@ func TestCompileDelete(t *testing.T) {
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.FromRaw("Table.With.Dots").
 					Join("Authors", "Authors.Id", "=", "Table.AuthorId").
-					Delete()
+					AsDelete()
 			},
 			sql: `DELETE Table.With.Dots FROM Table.With.Dots ` + "\n" + `INNER JOIN "Authors" ON "Authors"."Id" = "Table"."AuthorId"`,
 		},
@@ -4235,10 +4235,10 @@ func TestCompileDelete(t *testing.T) {
 		comp.deleteWithJoinForm = func(table, target, joins string) string {
 			return "DELETE FROM " + table + " USING " + strings.TrimSpace(joins)
 		}
-		q := sqlk.NewQuery().From("Posts").
+		q := sqlk.NewQuery("Posts").
 			Join("Authors", "Authors.Id", "=", "Posts.AuthorId").
 			WhereEq("Authors.Id", 5).
-			Delete()
+			AsDelete()
 
 		want := `DELETE FROM "Posts" USING INNER JOIN "Authors" ON "Authors"."Id" = "Posts"."AuthorId" WHERE "Authors"."Id" = ?`
 		got := mustCompile(t, comp, q)
@@ -4262,18 +4262,18 @@ func TestWriteValidation(t *testing.T) {
 			{
 				name: "insert",
 				build: func(q *sqlk.Query) *sqlk.Query {
-					return q.FromSub(sqlk.NewQuery().From("Inner"), "t").Insert(sqlk.Record{"A": 1})
+					return q.FromSub(sqlk.NewQuery("Inner"), "t").AsInsert(sqlk.Record{"A": 1})
 				},
 			},
 			{
 				name: "update",
 				build: func(q *sqlk.Query) *sqlk.Query {
-					return q.FromSub(sqlk.NewQuery().From("Inner"), "t").Update(sqlk.Record{"A": 1})
+					return q.FromSub(sqlk.NewQuery("Inner"), "t").AsUpdate(sqlk.Record{"A": 1})
 				},
 			},
 			{
 				name:  "delete",
-				build: func(q *sqlk.Query) *sqlk.Query { return q.FromSub(sqlk.NewQuery().From("Inner"), "t").Delete() },
+				build: func(q *sqlk.Query) *sqlk.Query { return q.FromSub(sqlk.NewQuery("Inner"), "t").AsDelete() },
 			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
@@ -4294,23 +4294,23 @@ func TestWriteValidation(t *testing.T) {
 		}{
 			{
 				name:    "empty insert map",
-				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").Insert(sqlk.Record{}) },
+				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsInsert(sqlk.Record{}) },
 				columns: 0,
 			},
 			{
 				name:    "empty update map",
-				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").Update(sqlk.Record{}) },
+				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsUpdate(sqlk.Record{}) },
 				columns: 0,
 			},
 			{
 				name:    "insert columns without values",
-				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").InsertColumns([]string{"a", "b"}, nil) },
+				build:   func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsInsertColumns([]string{"a", "b"}, nil) },
 				columns: 2,
 			},
 			{
 				name: "update values do not match columns",
 				build: func(q *sqlk.Query) *sqlk.Query {
-					return q.From("A").UpdateColumns([]string{"a", "b"}, []any{1, 2, 3})
+					return q.From("A").AsUpdateColumns([]string{"a", "b"}, []any{1, 2, 3})
 				},
 				columns: 2,
 				values:  3,
@@ -4318,7 +4318,7 @@ func TestWriteValidation(t *testing.T) {
 			{
 				name: "multi-row insert with a ragged row",
 				build: func(q *sqlk.Query) *sqlk.Query {
-					return q.From("A").InsertRows([]string{"a", "b"}, []any{1, 2}, []any{3})
+					return q.From("A").AsInsertRows([]string{"a", "b"}, []any{1, 2}, []any{3})
 				},
 				columns: 2,
 				values:  1,
@@ -4341,10 +4341,10 @@ func TestWriteValidation(t *testing.T) {
 		}
 	})
 
-	// InsertRows with columns but no rows carries no value rows at all; it
+	// AsInsertRows with columns but no rows carries no value rows at all; it
 	// is its own sentinel, distinct from a malformed-row WriteValuesError.
 	t.Run("insert without rows is rejected with ErrNoInsertRows", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").InsertRows([]string{"a", "b"}))
+		_, err := comp.Compile(sqlk.NewQuery("A").AsInsertRows([]string{"a", "b"}))
 		if !errors.Is(err, ErrNoInsertRows) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoInsertRows", err)
 		}
@@ -4364,16 +4364,16 @@ func TestWriteValidation(t *testing.T) {
 		}{
 			{
 				name: "rows then insert-from",
-				query: sqlk.NewQuery().Insert(sqlk.Record{"A": 1}).
+				query: sqlk.NewQuery().AsInsert(sqlk.Record{"A": 1}).
 					For(sqlk.EngineMysql, func(m *sqlk.Query) *sqlk.Query {
-						return m.InsertFrom([]string{"A"}, sqlk.NewQuery().From("Src").Select("A"))
+						return m.AsInsertFrom([]string{"A"}, sqlk.NewQuery("Src").Select("A"))
 					}),
 			},
 			{
 				name: "insert-from then rows",
-				query: sqlk.NewQuery().InsertFrom([]string{"A"}, sqlk.NewQuery().From("Src").Select("A")).
+				query: sqlk.NewQuery().AsInsertFrom([]string{"A"}, sqlk.NewQuery("Src").Select("A")).
 					For(sqlk.EngineMysql, func(m *sqlk.Query) *sqlk.Query {
-						return m.Insert(sqlk.Record{"A": 1})
+						return m.AsInsert(sqlk.Record{"A": 1})
 					}),
 			},
 		} {
@@ -4388,23 +4388,23 @@ func TestWriteValidation(t *testing.T) {
 
 	// Combine clauses belong to select queries only.
 	t.Run("combine on a write query is rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").Insert(sqlk.Record{"x": 1}).
-			Union(sqlk.NewQuery().From("B")))
+		_, err := comp.Compile(sqlk.NewQuery("A").AsInsert(sqlk.Record{"x": 1}).
+			Union(sqlk.NewQuery("B")))
 		if !errors.Is(err, ErrCombineNotSelect) {
 			t.Fatalf("Compile(...) error = %v, want ErrCombineNotSelect", err)
 		}
 	})
 
 	t.Run("combine member must be a select query", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").
-			Union(sqlk.NewQuery().From("B").Delete()))
+		_, err := comp.Compile(sqlk.NewQuery("A").
+			Union(sqlk.NewQuery("B").AsDelete()))
 		if !errors.Is(err, ErrCombineNotSelect) {
 			t.Fatalf("Compile(...) error = %v, want ErrCombineNotSelect", err)
 		}
 	})
 
 	t.Run("write problems aggregate with other compile problems", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().InsertColumns([]string{"a"}, []any{1, 2}))
+		_, err := comp.Compile(sqlk.NewQuery().AsInsertColumns([]string{"a"}, []any{1, 2}))
 		if !errors.Is(err, ErrInvalidWriteValues) {
 			t.Errorf("errors.Is(err, ErrInvalidWriteValues) = false, want true (%v)", err)
 		}
@@ -4414,8 +4414,8 @@ func TestWriteValidation(t *testing.T) {
 	})
 
 	t.Run("insert-from subquery is validated recursively", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("A").
-			InsertFrom([]string{"x"}, sqlk.NewQuery().Select("x")))
+		_, err := comp.Compile(sqlk.NewQuery("A").
+			AsInsertFrom([]string{"x"}, sqlk.NewQuery().Select("x")))
 		if !errors.Is(err, ErrNoFromTarget) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoFromTarget", err)
 		}
@@ -4477,7 +4477,7 @@ func TestForEngineScope(t *testing.T) {
 			build: func(q *sqlk.Query) *sqlk.Query {
 				// The aggregate rewrite strips limit/order/group in every
 				// engine scope, not just the visible one.
-				return q.From("A").Count("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Limit(5) })
+				return q.From("A").AsCount("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Limit(5) })
 			},
 			sql: `SELECT COUNT("x") AS "count" FROM "A"`,
 		},
@@ -4525,14 +4525,14 @@ func TestForEngineScope(t *testing.T) {
 		{
 			name: "engine-scoped aggregate wraps for that engine",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Select("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Count("ca", "cb") })
+				return q.From("A").Select("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.AsCount("ca", "cb") })
 			},
 			sql: `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "ca" IS NOT NULL AND "cb" IS NOT NULL) AS "countQuery"`,
 		},
 		{
 			name: "engine-scoped cte is collected for that engine only",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				body := sqlk.NewQuery().From("seqtbl").Select("Id").Where("Id", "<", 33)
+				body := sqlk.NewQuery("seqtbl").Select("Id").Where("Id", "<", 33)
 				return q.From("Races").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.With("range", body) }).Where("Id", ">", 55)
 			},
 			sql:  "WITH \"range\" AS (SELECT \"Id\" FROM \"seqtbl\" WHERE \"Id\" < ?)\nSELECT * FROM \"Races\" WHERE \"Id\" > ?",
@@ -4542,8 +4542,8 @@ func TestForEngineScope(t *testing.T) {
 			name: "engine-scoped write verbs coexist across engines",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("T").
-					For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Update(sqlk.Record{"A": 1}) }).
-					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.Update(sqlk.Record{"B": 2}) })
+					For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.AsUpdate(sqlk.Record{"A": 1}) }).
+					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.AsUpdate(sqlk.Record{"B": 2}) })
 			},
 			sql:  `UPDATE "T" SET "A" = ?`,
 			args: []any{1},
@@ -4579,14 +4579,14 @@ func TestForEngineScope(t *testing.T) {
 		{
 			name: "engine-scoped aggregate is not transformed",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Select("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Count("ca", "cb") })
+				return q.From("A").Select("x").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.AsCount("ca", "cb") })
 			},
 			sql: `SELECT "x" FROM "A"`,
 		},
 		{
 			name: "engine-scoped cte is not collected",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				body := sqlk.NewQuery().From("seqtbl").Select("Id").Where("Id", "<", 33)
+				body := sqlk.NewQuery("seqtbl").Select("Id").Where("Id", "<", 33)
 				return q.From("Races").For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.With("range", body) }).Where("Id", ">", 55)
 			},
 			sql:  `SELECT * FROM "Races" WHERE "Id" > ?`,
@@ -4602,13 +4602,13 @@ func TestForEngineScope(t *testing.T) {
 	})
 
 	t.Run("write clauses scoped to other engines are rejected", func(t *testing.T) {
-		_, err := forEngine(sqlk.EnginePostgres).Compile(sqlk.NewQuery().From("T").
-			For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Update(sqlk.Record{"A": 1}) }))
+		_, err := forEngine(sqlk.EnginePostgres).Compile(sqlk.NewQuery("T").
+			For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.AsUpdate(sqlk.Record{"A": 1}) }))
 		if !errors.Is(err, ErrNoVisibleWriteClause) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoVisibleWriteClause", err)
 		}
-		_, err = forEngine(sqlk.EnginePostgres).Compile(sqlk.NewQuery().From("T").
-			For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.Insert(sqlk.Record{"A": 1}) }))
+		_, err = forEngine(sqlk.EnginePostgres).Compile(sqlk.NewQuery("T").
+			For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.AsInsert(sqlk.Record{"A": 1}) }))
 		if !errors.Is(err, ErrNoVisibleWriteClause) {
 			t.Fatalf("Compile(...) error = %v, want ErrNoVisibleWriteClause (insert)", err)
 		}
@@ -4652,7 +4652,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "subquery resolves its own definitions",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Products").Avg("UnitPrice").
+				sub := sqlk.NewQuery("Products").AsAvg("UnitPrice").
 					Define("@UnitsInStock", 10).
 					Where("UnitsInStock", ">", sqlk.NewVariable("@UnitsInStock"))
 				return q.From("Products").WhereSub(sub, "<", 100)
@@ -4663,7 +4663,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "nested subquery resolves definitions up the parent chain",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				sub := sqlk.NewQuery().From("Orders").Select("Id").Where("CustomerId", "=", sqlk.NewVariable("@cid"))
+				sub := sqlk.NewQuery("Orders").Select("Id").Where("CustomerId", "=", sqlk.NewVariable("@cid"))
 				return q.From("Users").Define("@cid", 7).WhereInSub("Id", sub)
 			},
 			sql:  `SELECT * FROM "Users" WHERE "Id" IN (SELECT "Id" FROM "Orders" WHERE "CustomerId" = ?)`,
@@ -4672,8 +4672,8 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "two levels of chain lookup",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				inner := sqlk.NewQuery().From("Logs").Where("At", ">", sqlk.NewVariable("@since"))
-				mid := sqlk.NewQuery().From("Users").Select("Id").WhereExists(inner)
+				inner := sqlk.NewQuery("Logs").Where("At", ">", sqlk.NewVariable("@since"))
+				mid := sqlk.NewQuery("Users").Select("Id").WhereExists(inner)
 				return q.From("Accounts").Define("@since", "2024-01-01").WhereInSub("Owner", mid)
 			},
 			sql:  `SELECT * FROM "Accounts" WHERE "Owner" IN (SELECT "Id" FROM "Users" WHERE EXISTS (SELECT 1 FROM "Logs" WHERE "At" > ?))`,
@@ -4693,7 +4693,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "update values reference definitions",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Define("@count", 5).Update(sqlk.Record{"Count": sqlk.NewVariable("@count")})
+				return q.From("Table").Define("@count", 5).AsUpdate(sqlk.Record{"Count": sqlk.NewVariable("@count")})
 			},
 			sql:  `UPDATE "Table" SET "Count" = ?`,
 			args: []any{5},
@@ -4701,7 +4701,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "insert values reference definitions",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Define("@count", 5).Insert(sqlk.Record{"Count": sqlk.NewVariable("@count")})
+				return q.From("Table").Define("@count", 5).AsInsert(sqlk.Record{"Count": sqlk.NewVariable("@count")})
 			},
 			sql:  `INSERT INTO "Table" ("Count") VALUES (?)`,
 			args: []any{5},
@@ -4709,7 +4709,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "definitions survive the aggregate rewrite",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").Define("@x", 3).WhereEq("Id", sqlk.NewVariable("@x")).Count("ca", "cb")
+				return q.From("A").Define("@x", 3).WhereEq("Id", sqlk.NewVariable("@x")).AsCount("ca", "cb")
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM (SELECT 1 FROM "A" WHERE "Id" = ? AND "ca" IS NOT NULL AND "cb" IS NOT NULL) AS "countQuery"`,
 			args: []any{3},
@@ -4727,7 +4727,7 @@ func TestDefineVariable(t *testing.T) {
 		{
 			name: "cte body resolves its own definitions",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				body := sqlk.NewQuery().From("Products").Define("@unit", 10).Where("UnitPrice", ">", sqlk.NewVariable("@unit"))
+				body := sqlk.NewQuery("Products").Define("@unit", 10).Where("UnitPrice", ">", sqlk.NewVariable("@unit"))
 				return q.With("prodCTE", body).From("prodCTE")
 			},
 			sql:  "WITH \"prodCTE\" AS (SELECT * FROM \"Products\" WHERE \"UnitPrice\" > ?)\nSELECT * FROM \"prodCTE\"",
@@ -4740,7 +4740,7 @@ func TestVariableValidation(t *testing.T) {
 	comp := New()
 
 	t.Run("undefined variable is rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("T").WhereEq("A", sqlk.NewVariable("@missing")))
+		_, err := comp.Compile(sqlk.NewQuery("T").WhereEq("A", sqlk.NewVariable("@missing")))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined", err)
 		}
@@ -4754,8 +4754,8 @@ func TestVariableValidation(t *testing.T) {
 	})
 
 	t.Run("chain miss inside nested subqueries is rejected", func(t *testing.T) {
-		sub := sqlk.NewQuery().From("Orders").Where("CustomerId", "=", sqlk.NewVariable("@cid"))
-		_, err := comp.Compile(sqlk.NewQuery().From("Users").WhereInSub("Id", sub))
+		sub := sqlk.NewQuery("Orders").Where("CustomerId", "=", sqlk.NewVariable("@cid"))
+		_, err := comp.Compile(sqlk.NewQuery("Users").WhereInSub("Id", sub))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined", err)
 		}
@@ -4764,15 +4764,15 @@ func TestVariableValidation(t *testing.T) {
 	t.Run("cte bodies do not see outer definitions", func(t *testing.T) {
 		// Embedded CTE bodies carry no parent chain; variables resolve
 		// within the body itself.
-		body := sqlk.NewQuery().From("Products").Where("UnitPrice", ">", sqlk.NewVariable("@unit"))
-		_, err := comp.Compile(sqlk.NewQuery().From("prodCTE").Define("@unit", 10).With("prodCTE", body))
+		body := sqlk.NewQuery("Products").Where("UnitPrice", ">", sqlk.NewVariable("@unit"))
+		_, err := comp.Compile(sqlk.NewQuery("prodCTE").Define("@unit", 10).With("prodCTE", body))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined", err)
 		}
 	})
 
 	t.Run("undefined variables inside condition groups are rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("T").WhereGroup(func(g *sqlk.Query) *sqlk.Query {
+		_, err := comp.Compile(sqlk.NewQuery("T").WhereGroup(func(g *sqlk.Query) *sqlk.Query {
 			return g.WhereEq("A", sqlk.NewVariable("@missing"))
 		}))
 		if !errors.Is(err, ErrVariableNotDefined) {
@@ -4781,11 +4781,11 @@ func TestVariableValidation(t *testing.T) {
 	})
 
 	t.Run("undefined variables in write values are rejected", func(t *testing.T) {
-		_, err := comp.Compile(sqlk.NewQuery().From("T").Update(sqlk.Record{"A": sqlk.NewVariable("@missing")}))
+		_, err := comp.Compile(sqlk.NewQuery("T").AsUpdate(sqlk.Record{"A": sqlk.NewVariable("@missing")}))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined (update)", err)
 		}
-		_, err = comp.Compile(sqlk.NewQuery().From("T").Insert(sqlk.Record{"A": sqlk.NewVariable("@missing")}))
+		_, err = comp.Compile(sqlk.NewQuery("T").AsInsert(sqlk.Record{"A": sqlk.NewVariable("@missing")}))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined (insert)", err)
 		}
@@ -4795,7 +4795,7 @@ func TestVariableValidation(t *testing.T) {
 		// Ad-hoc table values behave like CTE bodies: they do not resolve
 		// along the definition chain, even when an outer definition of
 		// the same name exists.
-		_, err := comp.Compile(sqlk.NewQuery().From("T").Define("@x", 1).
+		_, err := comp.Compile(sqlk.NewQuery("T").Define("@x", 1).
 			WithTable("vals", []string{"n"}, []any{sqlk.NewVariable("@x")}))
 		if !errors.Is(err, ErrVariableNotDefined) {
 			t.Fatalf("Compile(...) error = %v, want ErrVariableNotDefined", err)
@@ -4828,14 +4828,14 @@ func TestUnsafeLiteral(t *testing.T) {
 		{
 			name: "insert value is inlined",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Insert(sqlk.Record{"Count": sqlk.NewUnsafeLiteral("Count + 1")})
+				return q.From("Table").AsInsert(sqlk.Record{"Count": sqlk.NewUnsafeLiteral("Count + 1")})
 			},
 			sql: `INSERT INTO "Table" ("Count") VALUES (Count + 1)`,
 		},
 		{
 			name: "update value is inlined and skips the parameter slot",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("MyTable").Update(sqlk.Record{"Name": "The User", "Address": sqlk.NewUnsafeLiteral("@address")})
+				return q.From("MyTable").AsUpdate(sqlk.Record{"Name": "The User", "Address": sqlk.NewUnsafeLiteral("@address")})
 			},
 			sql:  `UPDATE "MyTable" SET "Address" = @address, "Name" = ?`,
 			args: []any{"The User"},

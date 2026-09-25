@@ -5,7 +5,7 @@
 有时你只想在特定条件成立时执行部分构建,这时用 `When(condition, fn)` 动词;反相分支是 `WhenNot`。
 
 ```go
-query := sqlk.NewQuery().From("Transactions")
+query := sqlk.NewQuery("Transactions")
 
 amount := 100
 
@@ -18,7 +18,7 @@ query.When(amount > 0,
 等价于
 
 ```go
-query := sqlk.NewQuery().From("Transactions")
+query := sqlk.NewQuery("Transactions")
 
 if amount > 0 {
     query.Select("Debit as Amount")
@@ -50,7 +50,7 @@ sites := baseQuery.Clone().From("Sites")
 ### 类型转换示例
 
 ```go
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     Select("Id", "Title").
     For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("[Date]::date") }).
     For(sqlk.EngineSqlserver, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("CAST([Date] as DATE)") })
@@ -123,7 +123,7 @@ SELECT dates::date as date FROM generate_series ( ?::timestamp, ?::timestamp, '1
 `Comment` 动词给语句冠以数据库侧注释,便于把慢查询追回来源。
 
 ```go
-sqlk.NewQuery().From("Users").Comment("trace: load users").Limit(10)
+sqlk.NewQuery("Users").Comment("trace: load users").Limit(10)
 ```
 
 ```sql
@@ -137,7 +137,7 @@ sqlk.NewQuery().From("Users").Comment("trace: load users").Limit(10)
 ```go
 since := time.Date(2017, 8, 1, 0, 0, 0, 0, time.UTC)
 
-sqlk.NewQuery().From("Posts").
+sqlk.NewQuery("Posts").
     Define("since", since).
     WhereDate("CreatedAt", ">=", sqlk.NewVariable("since"))
 ```
@@ -155,7 +155,7 @@ args: `[2017-08-01 00:00:00 +0000 UTC]`
 `sqlk.NewUnsafeLiteral(text)` 把受信文本直接内联进 SQL 而非参数绑定,这是无法参数化场景(函数调用、列名片段)的显式逃生口。绝不可喂给它用户输入。
 
 ```go
-sqlk.NewQuery().From("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()"))
+sqlk.NewQuery("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()"))
 ```
 
 ```sql

@@ -8,8 +8,8 @@ sqlk 允许用 `union`、`intersect`、`except` 三种集合运算组合多个�
 
 
 ```go
-phones := sqlk.NewQuery().From("Phones")
-laptops := sqlk.NewQuery().From("Laptops")
+phones := sqlk.NewQuery("Phones")
+laptops := sqlk.NewQuery("Laptops")
 
 mobiles := laptops.Union(phones)
 ```
@@ -22,7 +22,7 @@ SELECT * FROM [Laptops] UNION SELECT * FROM [Phones]
 或使用回调变体
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").
+mobiles := sqlk.NewQuery("Laptops").
     ExceptAllFunc(func(q *sqlk.Query) *sqlk.Query { return q.From("OldLaptops") })
 ```
 
@@ -35,7 +35,7 @@ SELECT * FROM [Laptops] EXCEPT ALL SELECT * FROM [OldLaptops]
 随时可以用 `CombineRaw` 动词追加原生表达式
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").CombineRaw("union all select * from OldLaptops")
+mobiles := sqlk.NewQuery("Laptops").CombineRaw("union all select * from OldLaptops")
 ```
 
 ```sql
@@ -46,7 +46,7 @@ SELECT * FROM [Laptops] union all select * from OldLaptops
 
 
 ```go
-mobiles := sqlk.NewQuery().From("Laptops").CombineRaw("union all select * from [OldLaptops]")
+mobiles := sqlk.NewQuery("Laptops").CombineRaw("union all select * from [OldLaptops]")
 ```
 
 ```sql

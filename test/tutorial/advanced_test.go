@@ -16,12 +16,12 @@ func TestWhen(t *testing.T) {
 	// the inverted branch. Here it picks one of two projections, like if/else.
 	amount := 100
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Transactions").
+		sqlk.NewQuery("Transactions").
 			When(amount > 0, func(q *sqlk.Query) *sqlk.Query { return q.Select("Debit as Amount") }).
 			WhenNot(amount > 0, func(q *sqlk.Query) *sqlk.Query { return q.Select("Credit as Amount") }),
 		`SELECT [Debit] AS [Amount] FROM [Transactions]`)
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Transactions").
+		sqlk.NewQuery("Transactions").
 			When(amount < 0, func(q *sqlk.Query) *sqlk.Query { return q.Select("Debit as Amount") }).
 			WhenNot(amount < 0, func(q *sqlk.Query) *sqlk.Query { return q.Select("Credit as Amount") }),
 		`SELECT [Credit] AS [Amount] FROM [Transactions]`)
@@ -46,7 +46,7 @@ func TestClone(t *testing.T) {
 func TestForEngineScope(t *testing.T) {
 	// For(engine, fn): clauses added inside fn are visible only to that
 	// dialect.
-	query := sqlk.NewQuery().From("Posts").
+	query := sqlk.NewQuery("Posts").
 		Select("Id", "Title").
 		For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("[Date]::date") }).
 		For(sqlk.EngineSqlserver, func(q *sqlk.Query) *sqlk.Query { return q.SelectRaw("CAST([Date] as DATE)") })
@@ -88,7 +88,7 @@ func TestComment(t *testing.T) {
 	// Comment prefixes the statement with a database-side comment, which
 	// helps tracing slow queries back to their source.
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Users").Comment("trace: load users").Limit(10),
+		sqlk.NewQuery("Users").Comment("trace: load users").Limit(10),
 		`/* trace: load users */ SELECT TOP (?) * FROM [Users]`, 10)
 }
 
@@ -97,7 +97,7 @@ func TestDefineVariable(t *testing.T) {
 	// Variable (resolved up the parent query chain).
 	since := time.Date(2017, 8, 1, 0, 0, 0, 0, time.UTC)
 	assertSQL(t, compiler.NewPostgres(),
-		sqlk.NewQuery().From("Posts").
+		sqlk.NewQuery("Posts").
 			Define("since", since).
 			WhereDate("CreatedAt", ">=", sqlk.NewVariable("since")),
 		`SELECT * FROM "Posts" WHERE "CreatedAt"::date >= ?`, since)
@@ -108,6 +108,6 @@ func TestUnsafeLiteral(t *testing.T) {
 	// is inlined into the SQL directly. Only for trusted content that cannot
 	// be parameterized; never accept user input.
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()")),
+		sqlk.NewQuery("Logs").Where("Host", "=", sqlk.NewUnsafeLiteral("HOST_NAME()")),
 		`SELECT * FROM [Logs] WHERE [Host] = HOST_NAME()`)
 }

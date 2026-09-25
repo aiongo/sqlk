@@ -8,10 +8,10 @@ All these methods come in `Or` and `Not` variants: `OrWhereNull` connects the co
 The `WhereEq` verb is the shorthand for the equality operator, so these two statements are totally the same.
 
 ```go
-sqlk.NewQuery().From("Posts").WhereEq("Id", 10)
+sqlk.NewQuery("Posts").WhereEq("Id", 10)
 
 // the explicit operator form
-sqlk.NewQuery().From("Posts").Where("Id", "=", 10)
+sqlk.NewQuery("Posts").Where("Id", "=", 10)
 ```
 
 ```sql
@@ -21,7 +21,7 @@ SELECT * FROM [Posts] WHERE [Id] = ?
 args: `[10]`
 
 ```go
-sqlk.NewQuery().From("Posts").WhereFalse("IsPublished").Where("Score", ">", 10)
+sqlk.NewQuery("Posts").WhereFalse("IsPublished").Where("Score", ">", 10)
 ```
 
 ```sql
@@ -36,7 +36,7 @@ args: `[10]`
 If you want to filter your query against multiple fields, pass a map that represents col/values. Columns are emitted in sorted order so the compiled output is deterministic (Go map iteration order is undefined; under AND the order does not change the semantics).
 
 ```go
-query := sqlk.NewQuery().From("Posts").WhereMap(sqlk.Record{
+query := sqlk.NewQuery("Posts").WhereMap(sqlk.Record{
     "Year":         2017,
     "CategoryId":   198,
     "IsPublished":  true,
@@ -53,7 +53,7 @@ args: `[198, true, 2017]`
 To filter against `NULL`, boolean `true` and boolean `false` values.
 
 ```go
-sqlk.NewQuery().From("Users").WhereFalse("IsActive").OrWhereNull("LastActivityDate")
+sqlk.NewQuery("Users").WhereFalse("IsActive").OrWhereNull("LastActivityDate")
 ```
 
 ```sql
@@ -68,11 +68,11 @@ SELECT * FROM [Users] WHERE [IsActive] = cast(0 as bit) OR [LastActivityDate] IS
 
 ```go
 // products whose available stock (summed over movements) is below 10
-sold := sqlk.NewQuery().From("OrderItems").
+sold := sqlk.NewQuery("OrderItems").
     WhereColumns("OrderItems.ProductId", "=", "Products.Id").
-    Sum("Quantity")
+    AsSum("Quantity")
 
-query := sqlk.NewQuery().From("Products").WhereSub(sold, "<", 10)
+query := sqlk.NewQuery("Products").WhereSub(sold, "<", 10)
 ```
 
 ```sql
@@ -87,7 +87,7 @@ args: `[10]`
 To group your conditions, wrap them inside a `WhereGroup` callback.
 
 ```go
-sqlk.NewQuery().From("Posts").WhereGroup(func(q *sqlk.Query) *sqlk.Query {
+sqlk.NewQuery("Posts").WhereGroup(func(q *sqlk.Query) *sqlk.Query {
     return q.WhereFalse("IsPublished").OrWhereEq("CommentsCount", 0)
 })
 ```
@@ -104,7 +104,7 @@ args: `[0]`
 Use this verb when you want to compare two columns together.
 
 ```go
-sqlk.NewQuery().From("Posts").WhereColumns("Upvotes", ">", "Downvotes")
+sqlk.NewQuery("Posts").WhereColumns("Upvotes", ">", "Downvotes")
 ```
 
 ```sql
@@ -114,7 +114,7 @@ SELECT * FROM [Posts] WHERE [Upvotes] > [Downvotes]
 ## Between
 
 ```go
-sqlk.NewQuery().From("Posts").WhereBetween("Score", 10, 20)
+sqlk.NewQuery("Posts").WhereBetween("Score", 10, 20)
 ```
 
 ```sql
@@ -128,7 +128,7 @@ args: `[10, 20]`
 ## Where In
 Pass values as a variadic list to apply the SQL `WHERE IN` condition.
 ```go
-sqlk.NewQuery().From("Posts").WhereNotIn("AuthorId", 1, 2, 3, 4, 5)
+sqlk.NewQuery("Posts").WhereNotIn("AuthorId", 1, 2, 3, 4, 5)
 ```
 
 ```sql
@@ -140,9 +140,9 @@ args: `[1, 2, 3, 4, 5]`
 You can pass a `*Query` to filter against a sub query with `WhereNotInSub`
 
 ```go
-blocked := sqlk.NewQuery().From("Authors").WhereEq("Status", "blocked").Select("Id")
+blocked := sqlk.NewQuery("Authors").WhereEq("Status", "blocked").Select("Id")
 
-sqlk.NewQuery().From("Posts").WhereNotInSub("AuthorId", blocked)
+sqlk.NewQuery("Posts").WhereNotInSub("AuthorId", blocked)
 ```
 
 ```sql
@@ -158,8 +158,8 @@ args: `["blocked"]`
 To select all posts that have at least one comment.
 
 ```go
-sqlk.NewQuery().From("Posts").WhereExists(
-    sqlk.NewQuery().From("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"),
+sqlk.NewQuery("Posts").WhereExists(
+    sqlk.NewQuery("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"),
 )
 ```
 
@@ -181,7 +181,7 @@ The `WhereRaw` verb allows you to write anything not supported by the methods ab
 
 
 ```go
-sqlk.NewQuery().From("Posts").WhereRaw("lower(Title) = ?", "sql")
+sqlk.NewQuery("Posts").WhereRaw("lower(Title) = ?", "sql")
 ```
 
 ```sql
@@ -193,7 +193,7 @@ args: `["sql"]`
 Sometimes it's useful to wrap your table/columns by the engine identifier, this is helpful when the database is case sensitive like in PostgreSql, to do so just wrap your string with `[` and `]` and sqlk will put the correspondent identifiers.
 
 ```go
-sqlk.NewQuery().From("Posts").WhereRaw("lower([Title]) = ?", "sql")
+sqlk.NewQuery("Posts").WhereRaw("lower([Title]) = ?", "sql")
 ```
 
 In Sql Server

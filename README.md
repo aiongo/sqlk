@@ -10,7 +10,7 @@
 sqlk gives you one fluent `Query` type that carries every verb (select / insert / update / delete), a compiler that turns it into parameterized SQL for five dialects, a lightweight execution layer on top of [sqlx](https://github.com/jmoiron/sqlx), and a JSON query wire protocol for untrusted callers, all in one style:
 
 ```go
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -38,7 +38,7 @@ import (
     "github.com/aiongo/sqlk/compiler"
 )
 
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -71,14 +71,14 @@ db := exec.New(sqlxDB, compiler.NewSqlite())
 
 // scan into your types — Get[T], First[T], FirstOrDefault[T],
 // Paginate[T], Chunk[T], Exists, Count[T], Sum[T], ...
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     WhereEq("Lang", "en").
     OrderByDesc("Date").
     Limit(10))
 
-// writes — Exec and InsertGetId; Increment / Decrement are query verbs
+// writes — Exec and InsertGetId; AsIncrement / AsDecrement are query verbs
 // executed through the same Exec path
-id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"),
+id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"),
     sqlk.Record{"Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01"})
 ```
 
@@ -114,7 +114,7 @@ res.Args // ["en", "Go%", 10]
 
 ## Features
 
-- One fluent builder: a single `Query` type for select / insert / update / delete and the Count/Sum/Avg/Min/Max aggregate forms; CTEs (`With`), set operations (`Union` / `Intersect` / `Except`), nested condition groups, subqueries, engine scopes, query variables, `When`/`Clone` helpers.
+- One fluent builder: a single `Query` type for select / insert / update / delete and the AsCount/AsSum/AsAvg/AsMin/AsMax aggregate forms; CTEs (`With`), set operations (`Union` / `Intersect` / `Except`), nested condition groups, subqueries, engine scopes, query variables, `When`/`Clone` helpers.
 - Five dialects: Sql Server, PostgreSQL, MySql, Oracle, SQLite. Identifier wrapping, pagination, last-inserted-id and more follow SqlKata's per-dialect semantics.
 - Injection safety by construction: operators pass a whitelist, values bind as parameters, identifiers are wrapped by the compiler. The one escape hatch (`UnsafeLiteral`) is explicit and loud.
 - Execution layer on sqlx: generic scanning (`Get[T]`, `First[T]`, `Paginate[T]`, `Chunk[T]`, scalar aggregates), `InsertGetId`, DB/Tx-isomorphic handles, `context.Context` throughout, optional compile logging.

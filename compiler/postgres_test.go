@@ -175,7 +175,7 @@ func TestPostgresLastId(t *testing.T) {
 			// A return-id INSERT appends a lastval statement.
 			name: "insert return id appends lastval",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?);SELECT lastval() AS id`,
 			args: []any{"x"},
@@ -183,7 +183,7 @@ func TestPostgresLastId(t *testing.T) {
 		{
 			name: "plain insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").Insert(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsert(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?)`,
 			args: []any{"x"},
@@ -191,7 +191,7 @@ func TestPostgresLastId(t *testing.T) {
 		{
 			name: "multi-row insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
+				return q.From("Users").AsInsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
 			},
 			sql:  `INSERT INTO "Users" ("Name") VALUES (?), (?)`,
 			args: []any{"x", "y"},
@@ -273,7 +273,7 @@ func TestPostgresIdentifiers(t *testing.T) {
 			name: "qualified names inside a raw condition of a subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Table").WhereSubEq(
-					sqlk.NewQuery().From("Table2").WhereRaw("{Table2}.{Column} = {Table}.{MyCol}").Count(),
+					sqlk.NewQuery("Table2").WhereRaw("{Table2}.{Column} = {Table}.{MyCol}").AsCount(),
 					1,
 				)
 			},
@@ -304,10 +304,10 @@ func TestPostgresEngineLoopPorts(t *testing.T) {
 		{
 			name: "engine scope inside cte",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				series := sqlk.NewQuery().From("table").
+				series := sqlk.NewQuery("table").
 					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.WhereRaw("postgres = true") }).
 					For(sqlk.EngineSqlserver, func(q *sqlk.Query) *sqlk.Query { return q.WhereRaw("sqlsrv = 1") })
-				return sqlk.NewQuery().From("series").With("series", series)
+				return sqlk.NewQuery("series").With("series", series)
 			},
 			sql: "WITH \"series\" AS (SELECT * FROM \"table\" WHERE postgres = true)\nSELECT * FROM \"series\"",
 		},
@@ -407,9 +407,9 @@ func TestPostgresEngineLoopPorts(t *testing.T) {
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Phones").Where("Price", "<", 300).
 					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query {
-						return q.Union(sqlk.NewQuery().From("Laptops").Where("Price", "<", 800))
+						return q.Union(sqlk.NewQuery("Laptops").Where("Price", "<", 800))
 					}).
-					UnionAll(sqlk.NewQuery().From("Tablets").Where("Price", "<", 100))
+					UnionAll(sqlk.NewQuery("Tablets").Where("Price", "<", 100))
 			},
 			sql:  `SELECT * FROM "Phones" WHERE "Price" < ? UNION SELECT * FROM "Laptops" WHERE "Price" < ? UNION ALL SELECT * FROM "Tablets" WHERE "Price" < ?`,
 			args: []any{300, 800, 100},
@@ -464,8 +464,8 @@ func TestPostgresBuildSurface(t *testing.T) {
 			name: "cte precedes and combine follows",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("a").
-					With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).
-					UnionAll(sqlk.NewQuery().From("b"))
+					With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).
+					UnionAll(sqlk.NewQuery("b"))
 			},
 			sql:  "WITH \"t\" AS (SELECT * FROM \"src\" WHERE \"Ok\" = ?)\nSELECT * FROM \"a\" UNION ALL SELECT * FROM \"b\"",
 			args: []any{1},
@@ -473,7 +473,7 @@ func TestPostgresBuildSurface(t *testing.T) {
 		{
 			name: "aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Active", true).Count()
+				return q.From("A").WhereEq("Active", true).AsCount()
 			},
 			sql:  `SELECT COUNT(*) AS "count" FROM "A" WHERE "Active" = ?`,
 			args: []any{true},
@@ -481,7 +481,7 @@ func TestPostgresBuildSurface(t *testing.T) {
 		{
 			name: "update keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Update(sqlk.Record{"Name": "x"})
+				return q.From("Users").WhereEq("Id", 1).AsUpdate(sqlk.Record{"Name": "x"})
 			},
 			sql:  `UPDATE "Users" SET "Name" = ? WHERE "Id" = ?`,
 			args: []any{"x", 1},
@@ -489,7 +489,7 @@ func TestPostgresBuildSurface(t *testing.T) {
 		{
 			name: "delete keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Delete()
+				return q.From("Users").WhereEq("Id", 1).AsDelete()
 			},
 			sql:  `DELETE FROM "Users" WHERE "Id" = ?`,
 			args: []any{1},

@@ -4,7 +4,7 @@
 
 ```go
 // 最新的文章
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Limit(10)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Limit(10)
 ```
 
 Sql Server 中
@@ -31,7 +31,7 @@ SELECT * FROM `Posts` ORDER BY `Date` DESC LIMIT ?
 
 ```go
 // 最新的文章
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Limit(10).Offset(5)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Limit(10).Offset(5)
 ```
 
 Sql Server 中
@@ -60,7 +60,7 @@ SELECT * FROM `Posts` ORDER BY `Date` DESC LIMIT ? OFFSET ?
 用 `ForPage` 动词轻松分页。
 
 ```go
-posts := sqlk.NewQuery().From("Posts").OrderByDesc("Date").ForPage(2)
+posts := sqlk.NewQuery("Posts").OrderByDesc("Date").ForPage(2)
 ```
 
 缺省每页 `15` 行,第 2 参可覆盖该值。
@@ -69,7 +69,7 @@ posts := sqlk.NewQuery().From("Posts").OrderByDesc("Date").ForPage(2)
 
 
 ```go
-posts := sqlk.NewQuery().From("Posts").OrderByDesc("Date").ForPage(3, 50)
+posts := sqlk.NewQuery("Posts").OrderByDesc("Date").ForPage(3, 50)
 ```
 
 Sql Server 中,`ForPage(2)` 编译为
@@ -98,7 +98,7 @@ args: `[50, 100]`
 如果你来自 `Linq` 背景,这是个彩蛋。`Skip` 与 `Take` 分别是 `Offset` 与 `Limit` 的别名,请享受 :)
 
 ```go
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Take(10).Skip(5)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Take(10).Skip(5)
 ```
 
 ```sql

@@ -8,7 +8,7 @@ This is useful if you want to query against a specific date part of the column.
 lets you query against the **date part** of a datetime column (`WhereDateEq` is the equality shorthand; `WhereDate` takes an explicit operator).
 
 ```go
-sqlk.NewQuery().From("Posts").WhereDateEq("CreatedAt", "2018-04-01")
+sqlk.NewQuery("Posts").WhereDateEq("CreatedAt", "2018-04-01")
 ```
 
 In Sql Server
@@ -32,7 +32,7 @@ SELECT * FROM `Posts` WHERE DATE(`CreatedAt`) = ?
 lets you query against the **time part** of a datetime column
 
 ```go
-sqlk.NewQuery().From("Posts").WhereTime("CreatedAt", ">", "16:30")
+sqlk.NewQuery("Posts").WhereTime("CreatedAt", ">", "16:30")
 ```
 
 In Sql Server
@@ -57,7 +57,7 @@ SELECT * FROM `Posts` WHERE TIME(`CreatedAt`) > ?
 For example to get the posts created in the first of February.
 
 ```go
-sqlk.NewQuery().From("Posts").
+sqlk.NewQuery("Posts").
     WhereDatePartEq("day", "CreatedAt", 1).
     WhereDatePartEq("month", "CreatedAt", 2)
 ```

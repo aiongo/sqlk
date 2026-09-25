@@ -1,10 +1,10 @@
 # From(取数目标)
 
 ## 从表或视图取数
-`From` 动词设置 `from` 子句,通常是 `NewQuery` 之后的第一个调用。
+`NewQuery` 的可选表名参数设置 `from` 子句:`NewQuery("Posts")` 与 `NewQuery().From("Posts")` 完全等价。`From` 动词保留用于之后的设置或替换来源(非表名来源见下文 `FromSub`/`FromRaw`)。
 
 ```go
-sqlk.NewQuery().From("Posts")
+sqlk.NewQuery("Posts")
 ```
 
 ```sql
@@ -15,7 +15,7 @@ SELECT * FROM [Posts]
 用 `as` 语法给表起别名
 
 ```go
-sqlk.NewQuery().From("Posts as p")
+sqlk.NewQuery("Posts as p")
 ```
 
 ```sql
@@ -28,7 +28,7 @@ SELECT * FROM [Posts] AS [p]
 
 ```go
 fewMonthsAgo := time.Date(2017, 6, 1, 6, 31, 26, 0, time.UTC)
-oldPosts := sqlk.NewQuery().From("Posts").Where("Date", "<", fewMonthsAgo)
+oldPosts := sqlk.NewQuery("Posts").Where("Date", "<", fewMonthsAgo)
 
 query := sqlk.NewQuery().FromSub(oldPosts, "old").OrderByDesc("Date")
 ```

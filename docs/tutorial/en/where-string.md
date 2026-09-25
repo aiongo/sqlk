@@ -8,7 +8,7 @@ To override this behavior pass the `sqlk.CaseSensitive()` option.
 
 
 ```go
-sqlk.NewQuery().From("Posts").WhereEnds("Title", "Book")
+sqlk.NewQuery("Posts").WhereEnds("Title", "Book")
 ```
 
 ```sql
@@ -20,7 +20,7 @@ args: `["%book"]`
 Using the case sensitive option
 
 ```go
-sqlk.NewQuery().From("Posts").WhereStarts("Title", "Book", sqlk.CaseSensitive())
+sqlk.NewQuery("Posts").WhereStarts("Title", "Book", sqlk.CaseSensitive())
 ```
 
 ```sql
@@ -32,7 +32,7 @@ args: `["Book%"]`
 Using the native `WhereLike` method
 
 ```go
-sqlk.NewQuery().From("Posts").WhereLike("Title", "Book")
+sqlk.NewQuery("Posts").WhereLike("Title", "Book")
 ```
 
 ```sql
@@ -54,7 +54,7 @@ args: `["Book"]`
 You can also add an optional escape clause to all of the LIKE queries using the `sqlk.EscapeLike` option:
 
 ```go
-sqlk.NewQuery().From("Posts").WhereLike("Title", `%The \% Sign%`, sqlk.EscapeLike(`\`))
+sqlk.NewQuery("Posts").WhereLike("Title", `%The \% Sign%`, sqlk.EscapeLike(`\`))
 ```
 
 In PostgreSql

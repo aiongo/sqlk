@@ -16,7 +16,7 @@ var ErrLastIdUnsupported = errors.New("compiler does not support retrieving the 
 
 // Exec runs a write-verb query (insert/update/delete) and returns the number
 // of affected rows; the query is built with the root package's write verbs
-// (`Insert`, `Update`, `Delete`, `Increment`, `Decrement`, ...). For an
+// (`AsInsert`, `AsUpdate`, `AsDelete`, `AsIncrement`, `AsDecrement`, ...). For an
 // INSERT that must retrieve the auto-incremented ID, use `InsertGetId`.
 func (x *Executor) Exec(ctx context.Context, q *sqlk.Query) (int64, error) {
 	res, err := x.compile(q)
@@ -53,7 +53,7 @@ func (x *Executor) InsertGetId[T Number](ctx context.Context, q *sqlk.Query, dat
 	if !x.compiler.SupportsLastId() {
 		return zero, ErrLastIdUnsupported
 	}
-	row, err := x.scanOne[lastIdRow[T]](ctx, q.Clone().InsertReturnId(data))
+	row, err := x.scanOne[lastIdRow[T]](ctx, q.Clone().AsInsertReturnId(data))
 	if err != nil {
 		return zero, err
 	}

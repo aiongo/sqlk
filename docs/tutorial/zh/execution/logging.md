@@ -8,7 +8,7 @@ db := exec.New(sqlxDB, compiler.NewSqlite(),
         log.Println(res.SQL, res.Args)
     }))
 
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts"))
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts"))
 ```
 
 将打印到日志

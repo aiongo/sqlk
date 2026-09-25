@@ -8,7 +8,7 @@ sqlk 提供 `WhereDate`、`WhereTime` 与 `WhereDatePart` 方法处理日期列�
 按 datetime 列的**日期部分**查询(`WhereDateEq` 是等值简写;`WhereDate` 需显式给操作符)。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereDateEq("CreatedAt", "2018-04-01")
+sqlk.NewQuery("Posts").WhereDateEq("CreatedAt", "2018-04-01")
 ```
 
 Sql Server 中
@@ -32,7 +32,7 @@ SELECT * FROM `Posts` WHERE DATE(`CreatedAt`) = ?
 按 datetime 列的**时间部分**查询
 
 ```go
-sqlk.NewQuery().From("Posts").WhereTime("CreatedAt", ">", "16:30")
+sqlk.NewQuery("Posts").WhereTime("CreatedAt", ">", "16:30")
 ```
 
 Sql Server 中
@@ -57,7 +57,7 @@ SELECT * FROM `Posts` WHERE TIME(`CreatedAt`) > ?
 例如取二月一日创建的文章。
 
 ```go
-sqlk.NewQuery().From("Posts").
+sqlk.NewQuery("Posts").
     WhereDatePartEq("day", "CreatedAt", 1).
     WhereDatePartEq("month", "CreatedAt", 2)
 ```

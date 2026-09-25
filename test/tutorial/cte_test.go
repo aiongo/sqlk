@@ -11,13 +11,13 @@ import (
 // WithTable value tables.
 
 func TestWith(t *testing.T) {
-	activePosts := sqlk.NewQuery().From("Comments").
+	activePosts := sqlk.NewQuery("Comments").
 		Select("PostId").
 		SelectRaw("count(1) as Count").
 		GroupBy("PostId").
 		HavingRaw("count(1) > 100")
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Posts").
+		sqlk.NewQuery("Posts").
 			With("ActivePosts", activePosts). // ActivePosts is now usable as a regular table
 			JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
 			Select("Posts.*", "ActivePosts.Count"),
@@ -28,7 +28,7 @@ func TestWith(t *testing.T) {
 
 func TestWithRaw(t *testing.T) {
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Posts").
+		sqlk.NewQuery("Posts").
 			WithRaw("ActivePosts", "select PostId, count(1) as count from Comments having count(1) > ?", 50).
 			JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
 			Select("Posts.*", "ActivePosts.Count"),

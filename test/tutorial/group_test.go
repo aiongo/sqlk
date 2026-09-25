@@ -11,7 +11,7 @@ import (
 
 func TestGroupBy(t *testing.T) {
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Comments").
+		sqlk.NewQuery("Comments").
 			Select("PostId").
 			SelectRaw("count(1) as count").
 			GroupBy("PostId"),
@@ -20,7 +20,7 @@ func TestGroupBy(t *testing.T) {
 
 func TestGroupByRaw(t *testing.T) {
 	assertSQL(t, compiler.NewPostgres(),
-		sqlk.NewQuery().From("Companies").
+		sqlk.NewQuery("Companies").
 			Select("Profit").
 			SelectRaw("COUNT(*) as count").
 			GroupByRaw("Profit WITH ROLLUP"),

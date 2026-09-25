@@ -19,7 +19,7 @@ It uses parameter binding to protect your application against SQL injection atta
 In addition to protection against SQL injection attacks, this technique speeds up your query execution by letting the SQL engine cache and reuse the same query plan even if the parameters are changed.
 
 ```go
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -61,7 +61,7 @@ sqlxDB := sqlx.NewDb(sqlDB, "sqlite3")
 db := exec.New(sqlxDB, compiler.NewSqlite())
 
 // From now on you can build queries and execute them
-post, err := db.First[Post](ctx, sqlk.NewQuery().From("Users").
+post, err := db.First[Post](ctx, sqlk.NewQuery("Users").
     WhereEq("Id", 1).WhereEq("Status", "Active"))
 ```
 
@@ -88,7 +88,7 @@ import (
 // Create a Sql Server compiler
 comp := compiler.NewSqlserver()
 
-query := sqlk.NewQuery().From("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
+query := sqlk.NewQuery("Users").WhereEq("Id", 1).WhereEq("Status", "Active")
 
 res, err := comp.Compile(query)
 

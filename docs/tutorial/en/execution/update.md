@@ -12,7 +12,7 @@ db := exec.New(sqlxDB, compiler.NewSqlite())
 ## Insert One Record
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").Insert(sqlk.Record{
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsert(sqlk.Record{
     "Title":  "Introduction to C#",
     "Price":  18,
     "Status": "active",
@@ -24,7 +24,7 @@ affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").Insert(sqlk.Record{
 `InsertGetId` builds the returnId form of the insert on a copy of the query, executes it, and scans the id in a single round trip (the trailing LastId statement is dialect specific — `scope_identity()` on Sql Server, `lastval()` on PostgreSql, `last_insert_rowid()` on SQLite):
 
 ```go
-id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"), sqlk.Record{
+id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"), sqlk.Record{
     "Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01",
 })
 // id == 4
@@ -37,7 +37,7 @@ id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"), sqlk.Record
 ```go
 cols := []string{"Name", "Price"}
 
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Products").InsertRows(cols,
+affected, err := db.Exec(ctx, sqlk.NewQuery("Products").AsInsertRows(cols,
     []any{"A", 1000},
     []any{"B", 2000},
     []any{"C", 3000},
@@ -48,32 +48,32 @@ affected, err := db.Exec(ctx, sqlk.NewQuery().From("Products").InsertRows(cols,
 
 ```go
 columns := []string{"Title", "Price", "Status"}
-articlesQuery := sqlk.NewQuery().From("Articles").WhereEq("Type", "Book").Limit(100)
+articlesQuery := sqlk.NewQuery("Articles").WhereEq("Type", "Book").Limit(100)
 
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").InsertFrom(columns, articlesQuery))
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsertFrom(columns, articlesQuery))
 ```
 
 ## Update Existing Data
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").
     WhereEq("Id", 1).
-    Update(sqlk.Record{
+    AsUpdate(sqlk.Record{
         "Price":  18,
         "Status": "active",
     }))
 // affected == 1
 ```
 
-`Increment` / `Decrement` verbs work through the same path:
+`AsIncrement` / `AsDecrement` verbs work through the same path:
 
 ```go
-_, err := db.Exec(ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1).Increment("Likes"))
+_, err := db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1).AsIncrement("Likes"))
 // the row's Likes went from 30 to 31
 ```
 
 ## Delete
 
 ```go
-affected, err := db.Exec(ctx, sqlk.NewQuery().From("Books").WhereEq("Status", "inactive").Delete())
+affected, err := db.Exec(ctx, sqlk.NewQuery("Books").WhereEq("Status", "inactive").AsDelete())
 ```

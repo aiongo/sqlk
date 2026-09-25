@@ -4,10 +4,10 @@
 
 ## Insert
 
-`Insert` 动词接收表达「列/值」的 `sqlk.Record`(`map[string]any` 的别名)。列按字典序输出,保证编译产物确定(Go map 迭代顺序不定;列序不影响写入语义)。
+`AsInsert` 动词接收表达「列/值」的 `sqlk.Record`(`map[string]any` 的别名)。列按字典序输出,保证编译产物确定(Go map 迭代顺序不定;列序不影响写入语义)。
 
 ```go
-query := sqlk.NewQuery().From("Books").Insert(sqlk.Record{
+query := sqlk.NewQuery("Books").AsInsert(sqlk.Record{
     "Title":     "Toyota Kata",
     "CreatedAt": time.Date(2009, 8, 4, 0, 0, 0, 0, time.UTC),
     "Author":    "Mike Rother",
@@ -20,10 +20,10 @@ INSERT INTO [Books] ([Author], [CreatedAt], [Title]) VALUES (?, ?, ?)
 
 args: `["Mike Rother", 2009-08-04 00:00:00 +0000 UTC, "Toyota Kata"]`
 
-> **Note:** 执行查询取回插入 **id** 用执行层的 `InsertGetId`(见[执行 / Insert、Update、Delete](execution/update.md));构建侧的对应动词是 `InsertReturnId`:
+> **Note:** 执行查询取回插入 **id** 用执行层的 `InsertGetId`(见[执行 / Insert、Update、Delete](execution/update.md));构建侧的对应动词是 `AsInsertReturnId`:
 
 ```go
-query := sqlk.NewQuery().From("Books").InsertReturnId(sqlk.Record{
+query := sqlk.NewQuery("Books").AsInsertReturnId(sqlk.Record{
     "Title":  "Introduction to Dart",
     "Price":  0,
     "Status": "active",
@@ -43,12 +43,12 @@ INSERT INTO "Books" ("Price", "Status", "Title") VALUES (?, ?, ?);SELECT lastval
 ```
 
 ### 多行插入
-用 `InsertRows` 动词插入多条记录
+用 `AsInsertRows` 动词插入多条记录
 
 ```go
 cols := []string{"Name", "Price"}
 
-query := sqlk.NewQuery().From("Products").InsertRows(cols,
+query := sqlk.NewQuery("Products").AsInsertRows(cols,
     []any{"A", 1000},
     []any{"B", 2000},
     []any{"C", 3000},
@@ -65,8 +65,8 @@ INSERT INTO [Products] ([Name], [Price]) VALUES (?, ?), (?, ?), (?, ?)
 
 ```go
 cols := []string{"Id", "Name", "Address"}
-sqlk.NewQuery().From("ActiveUsers").InsertFrom(cols,
-    sqlk.NewQuery().From("Users").WhereEq("Active", 1))
+sqlk.NewQuery("ActiveUsers").AsInsertFrom(cols,
+    sqlk.NewQuery("Users").WhereEq("Active", 1))
 ```
 
 ```sql
@@ -79,7 +79,7 @@ args: `[1]`
 `OnConflict` 把 INSERT 标记为 upsert:命中唯一键冲突时,指定列回写为本次插入的值。各插入形态(单行、多行、从查询插入)均适用;目前仅 MySQL 方言支持,其余方言在编译期报错。
 
 ```go
-query := sqlk.NewQuery().From("Products").InsertRows([]string{"Name", "Price"},
+query := sqlk.NewQuery("Products").AsInsertRows([]string{"Name", "Price"},
     []any{"A", 1000},
     []any{"B", 2000},
 ).OnConflict("Price")
@@ -94,8 +94,8 @@ INSERT IGNORE INTO `Products` (`Name`, `Price`) VALUES (?, ?), (?, ?) ON DUPLICA
 ## Update
 
 ```go
-query := sqlk.NewQuery().From("Posts").WhereNull("AuthorId").
-    Update(sqlk.Record{"AuthorId": 10})
+query := sqlk.NewQuery("Posts").WhereNull("AuthorId").
+    AsUpdate(sqlk.Record{"AuthorId": 10})
 ```
 
 ```sql
@@ -106,11 +106,11 @@ args: `[10]`
 
 ## Increment 与 Decrement
 
-数值调整用 `Increment` / `Decrement`,编译为 `SET 列 = 列 ± ?`;增量缺省 1。
+数值调整用 `AsIncrement` / `AsDecrement`,编译为 `SET 列 = 列 ± ?`;增量缺省 1。
 
 ```go
-sqlk.NewQuery().From("Posts").WhereEq("Id", 1).Increment("Views")
-sqlk.NewQuery().From("Products").WhereEq("Id", 1).Decrement("Stock", 2)
+sqlk.NewQuery("Posts").WhereEq("Id", 1).AsIncrement("Views")
+sqlk.NewQuery("Products").WhereEq("Id", 1).AsDecrement("Stock", 2)
 ```
 
 ```sql
@@ -123,7 +123,7 @@ args: 分别为 `[1, 1]` 与 `[2, 1]`
 ## Delete
 
 ```go
-query := sqlk.NewQuery().From("Posts").Where("Date", ">", thirtyDaysAgo).Delete()
+query := sqlk.NewQuery("Posts").Where("Date", ">", thirtyDaysAgo).AsDelete()
 ```
 
 ```sql

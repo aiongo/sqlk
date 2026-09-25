@@ -100,7 +100,7 @@ func TestReadmeHero(t *testing.T) {
 	ctx := context.Background()
 	db := exec.New(newPostsDB(t), compiler.NewSqlite())
 
-	posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+	posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
 		Where("Likes", ">", 10).
 		WhereIn("Lang", "en", "fr").
 		WhereNotNull("AuthorId").
@@ -118,7 +118,7 @@ func TestReadmeHero(t *testing.T) {
 // is involved, the compiler turns the query into placeholder SQL plus the
 // ordered argument list.
 func TestReadmeBuildAndCompile(t *testing.T) {
-	query := sqlk.NewQuery().From("Posts").
+	query := sqlk.NewQuery("Posts").
 		Where("Likes", ">", 10).
 		WhereIn("Lang", "en", "fr").
 		WhereNotNull("AuthorId").
@@ -139,7 +139,7 @@ func TestReadmeExecution(t *testing.T) {
 
 	db := exec.New(sqlxDB, compiler.NewSqlite())
 
-	posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+	posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
 		WhereEq("Lang", "en").
 		OrderByDesc("Date").
 		Limit(10))
@@ -150,7 +150,7 @@ func TestReadmeExecution(t *testing.T) {
 		t.Errorf("posts: got %+v", posts)
 	}
 
-	id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery().From("Posts"),
+	id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"),
 		sqlk.Record{"Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01"})
 	if err != nil {
 		t.Fatalf("insert get id: %v", err)
@@ -163,7 +163,7 @@ func TestReadmeExecution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	if _, err := tx.Get[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", id)); err != nil {
+	if _, err := tx.Get[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", id)); err != nil {
 		t.Fatalf("get in tx: %v", err)
 	}
 	if err := tx.Commit(); err != nil {

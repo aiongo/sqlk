@@ -4,7 +4,7 @@
 
 ```go
 // latest posts
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Limit(10)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Limit(10)
 ```
 
 In Sql Server
@@ -31,7 +31,7 @@ If you want to skip some records, use the `Offset` method.
 
 ```go
 // latest posts
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Limit(10).Offset(5)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Limit(10).Offset(5)
 ```
 
 In Sql Server
@@ -60,7 +60,7 @@ SELECT * FROM `Posts` ORDER BY `Date` DESC LIMIT ? OFFSET ?
 You can use the `ForPage` verb to easily paginate your data.
 
 ```go
-posts := sqlk.NewQuery().From("Posts").OrderByDesc("Date").ForPage(2)
+posts := sqlk.NewQuery("Posts").OrderByDesc("Date").ForPage(2)
 ```
 
 By default this method will return `15` rows per page, you can override this value by passing an integer as the 2nd parameter.
@@ -69,7 +69,7 @@ By default this method will return `15` rows per page, you can override this val
 
 
 ```go
-posts := sqlk.NewQuery().From("Posts").OrderByDesc("Date").ForPage(3, 50)
+posts := sqlk.NewQuery("Posts").OrderByDesc("Date").ForPage(3, 50)
 ```
 
 In Sql Server, `ForPage(2)` compiles to
@@ -98,7 +98,7 @@ args: `[50, 100]`
 If you are coming from a `Linq` background here is a bonus for you. You can use the `Skip` and `Take` methods as aliases for `Offset` and `Limit`, enjoy :)
 
 ```go
-query := sqlk.NewQuery().From("Posts").OrderByDesc("Date").Take(10).Skip(5)
+query := sqlk.NewQuery("Posts").OrderByDesc("Date").Take(10).Skip(5)
 ```
 
 ```sql

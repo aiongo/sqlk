@@ -5,7 +5,7 @@
 ## Having
 
 ```go
-commentsCount := sqlk.NewQuery().From("Comments").
+commentsCount := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId")
@@ -22,7 +22,7 @@ args: `[100]`
 ## HavingRaw
 
 ```go
-query := sqlk.NewQuery().From("Comments").
+query := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").
@@ -37,7 +37,7 @@ SELECT [PostId], count(1) as Count FROM [Comments] GROUP BY [PostId] HAVING coun
 嵌套 having 条件用 `HavingGroup`:回调内以 `Where` 方法族累积条件,编译为带括号的 `HAVING (…)` 组。
 
 ```go
-query := sqlk.NewQuery().From("Comments").
+query := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").

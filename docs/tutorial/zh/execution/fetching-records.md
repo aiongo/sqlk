@@ -17,7 +17,7 @@
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
 
-posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
+posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     Where("Likes", ">", 10).
     WhereIn("Lang", "en", "fr").
     WhereNotNull("AuthorId").
@@ -32,7 +32,7 @@ posts, err := db.Get[Post](ctx, sqlk.NewQuery().From("Posts").
 用 `First[T]` 或 `FirstOrDefault[T]` 取查询的首条记录。
 
 ```go
-post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
+post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 ```
 
 > **Note:** `First` 与 `FirstOrDefault` 会隐式给查询附加 `Limit(1)`,无需自己添加。
@@ -40,22 +40,22 @@ post, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 1))
 无匹配行时 `First` 返回可判别的错误——即 `sql.ErrNoRows`,也以 `exec.ErrNoRows` 导出:
 
 ```go
-_, err := db.First[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+_, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 errors.Is(err, exec.ErrNoRows) // true
 ```
 
 `FirstOrDefault` 把缺行视为非错误,返回零值:
 
 ```go
-missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery().From("Posts").WhereEq("Id", 99))
+missing, err := db.FirstOrDefault[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
 // missing == Post{} , err == nil
 ```
 
 ## 轻量存在性判断
 
 ```go
-exists, err := db.Exists(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "fr"))
-missing, err := db.NotExist(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "de"))
+exists, err := db.Exists(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "fr"))
+missing, err := db.NotExist(ctx, sqlk.NewQuery("Posts").WhereEq("Lang", "de"))
 ```
 
 ## 数据分页
@@ -63,10 +63,10 @@ missing, err := db.NotExist(ctx, sqlk.NewQuery().From("Posts").WhereEq("Lang", "
 分页取数用 `Paginate[T](page, perPage)` 代替 `Get`。它返回 `PaginationResult[T]`:总数、当前页号、每页数与当页 `List`。
 
 ```go
-page1, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 1, 2)
+page1, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 1, 2)
 // page1.Total == 3, len(page1.List) == 2, page1.HasMore() == true
 
-page2, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2, 2)
+page2, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2, 2)
 // len(page2.List) == 1, page2.HasMore() == false
 ```
 
@@ -77,7 +77,7 @@ page2, err := db.Paginate[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id")
 有时你想分块取数,避免整表一次性载入内存;这时用 `Chunk` 迭代器。
 
 ```go
-for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy("Id"), 2) {
+for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2) {
     if err != nil {
         break // 迭代器产出一次错误后即终止
     }
@@ -94,8 +94,8 @@ for rows, err := range db.Chunk[Post](ctx, sqlk.NewQuery().From("Posts").OrderBy
 泛型聚合方法执行查询的聚合形态,把标量直接扫进你的数字:
 
 ```go
-count, err := db.Count[int64](ctx, sqlk.NewQuery().From("Posts")) // 3
-sum, err := db.Sum[int64](ctx, sqlk.NewQuery().From("Posts"), "Likes") // 75
+count, err := db.Count[int64](ctx, sqlk.NewQuery("Posts")) // 3
+sum, err := db.Sum[int64](ctx, sqlk.NewQuery("Posts"), "Likes") // 75
 ```
 
 `Avg[T]`、`Min[T]`、`Max[T]` 同理。

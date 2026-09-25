@@ -15,13 +15,13 @@ In SQL, a CTE is represented as a `with` clause.
 To add a CTE to your query simply use the `With` verb.
 
 ```go
-activePosts := sqlk.NewQuery().From("Comments").
+activePosts := sqlk.NewQuery("Comments").
     Select("PostId").
     SelectRaw("count(1) as Count").
     GroupBy("PostId").
     HavingRaw("count(1) > 100")
 
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     With("ActivePosts", activePosts). // now you can consider ActivePosts as a regular table in the database
     JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
     Select("Posts.*", "ActivePosts.Count")
@@ -37,7 +37,7 @@ INNER JOIN [ActivePosts] ON [ActivePosts].[PostId] = [Posts].[Id]
 You can use the `WithRaw` verb if you want to pass a raw SQL expression.
 
 ```go
-query := sqlk.NewQuery().From("Posts").
+query := sqlk.NewQuery("Posts").
     WithRaw("ActivePosts", "select PostId, count(1) as count from Comments having count(1) > ?", 50). // now you can consider ActivePosts as a regular table in the database
     JoinEq("ActivePosts", "ActivePosts.PostId", "Posts.Id").
     Select("Posts.*", "ActivePosts.Count")

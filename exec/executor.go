@@ -5,7 +5,7 @@
 // and timeouts and cancellation reach the driver.
 //
 //	db := exec.New(sqlxDB, compiler.NewSqlite())
-//	cars, err := db.Get[Car](ctx, sqlk.NewQuery().From("Cars").WhereEq("Brand", "Honda"))
+//	cars, err := db.Get[Car](ctx, sqlk.NewQuery("Cars").WhereEq("Brand", "Honda"))
 //
 // The layer depends only on sqlx, the root package, and the compiler
 // (dependencies point strictly downward); it does not depend on qdata. The
@@ -41,7 +41,7 @@ type runner interface {
 // *Executor parameter works inside and outside transactions alike:
 //
 //	func loadCars(ctx context.Context, x *exec.Executor) ([]Car, error) {
-//		return x.Get[Car](ctx, sqlk.NewQuery().From("Cars"))
+//		return x.Get[Car](ctx, sqlk.NewQuery("Cars"))
 //	}
 //	loadCars(ctx, db.Executor)   // db  *exec.DB
 //	loadCars(ctx, tx.Executor)   // tx  *exec.Tx

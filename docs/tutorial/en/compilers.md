@@ -20,7 +20,7 @@ sqlk supports natively the following dialects, one constructor each:
 Theoretically the output of the different compilers should be similar; this is true for about 80% of the cases. However in some edge cases the output can be very different. For instance, take a look at how the `Limit` and `Offset` clause get compiled by each compiler
 
 ```go
-sqlk.NewQuery().From("Posts").Limit(10).Offset(20)
+sqlk.NewQuery("Posts").Limit(10).Offset(20)
 ```
 
 Sql Server
@@ -76,7 +76,7 @@ Every operator used by `Where` / `Having` conditions is validated against a whit
 ```go
 comp := compiler.NewPostgres().Whitelist("&&", "||")
 
-sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family", "outdoor"})
+sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family", "outdoor"})
 ```
 
 ```sql
@@ -87,7 +87,7 @@ An operator that is neither built-in nor whitelisted fails compilation with a di
 
 ```go
 _, err := compiler.NewPostgres().Compile(
-    sqlk.NewQuery().From("Trips").Where("Tags", "&&", []string{"family"}))
+    sqlk.NewQuery("Trips").Where("Tags", "&&", []string{"family"}))
 errors.Is(err, compiler.ErrOperatorNotAllowed) // true
 ```
 

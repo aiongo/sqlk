@@ -11,7 +11,7 @@ import (
 
 func TestHaving(t *testing.T) {
 	// Having(column, operator, value) mirrors the triple form of Where.
-	commentsCount := sqlk.NewQuery().From("Comments").
+	commentsCount := sqlk.NewQuery("Comments").
 		Select("PostId").
 		SelectRaw("count(1) as Count").
 		GroupBy("PostId")
@@ -22,7 +22,7 @@ func TestHaving(t *testing.T) {
 
 func TestHavingRaw(t *testing.T) {
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Comments").
+		sqlk.NewQuery("Comments").
 			Select("PostId").
 			SelectRaw("count(1) as Count").
 			GroupBy("PostId").
@@ -34,7 +34,7 @@ func TestHavingGroup(t *testing.T) {
 	// Nested Having: conditions accumulate via the Where family inside the
 	// group and compile to HAVING (...).
 	assertSQL(t, compiler.NewSqlserver(),
-		sqlk.NewQuery().From("Comments").
+		sqlk.NewQuery("Comments").
 			Select("PostId").
 			SelectRaw("count(1) as Count").
 			GroupBy("PostId").

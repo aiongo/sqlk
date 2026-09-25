@@ -45,7 +45,7 @@ func TestMysqlIdentifiers(t *testing.T) {
 		},
 		{
 			name:  "count alias",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").AsCount() },
 			sql:   "SELECT COUNT(*) AS `count` FROM `A`",
 		},
 		{
@@ -188,7 +188,7 @@ func TestMysqlLastId(t *testing.T) {
 			// A return-id INSERT appends a last_insert_id statement.
 			name: "insert return id appends last_insert_id",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  "INSERT INTO `Users` (`Name`) VALUES (?);SELECT last_insert_id() as Id",
 			args: []any{"x"},
@@ -196,7 +196,7 @@ func TestMysqlLastId(t *testing.T) {
 		{
 			name: "plain insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").Insert(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsert(sqlk.Record{"Name": "x"})
 			},
 			sql:  "INSERT INTO `Users` (`Name`) VALUES (?)",
 			args: []any{"x"},
@@ -204,7 +204,7 @@ func TestMysqlLastId(t *testing.T) {
 		{
 			name: "multi-row insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
+				return q.From("Users").AsInsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
 			},
 			sql:  "INSERT INTO `Users` (`Name`) VALUES (?), (?)",
 			args: []any{"x", "y"},
@@ -214,9 +214,9 @@ func TestMysqlLastId(t *testing.T) {
 			name: "insert from paged subquery with cte",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("expensive_cars").
-					With("old_cards", sqlk.NewQuery().From("all_cars").Where("year", "<", 2000)).
-					InsertFrom([]string{"name", "model", "year"},
-						sqlk.NewQuery().From("old_cars").Where("price", ">", 100).ForPage(2, 10))
+					With("old_cards", sqlk.NewQuery("all_cars").Where("year", "<", 2000)).
+					AsInsertFrom([]string{"name", "model", "year"},
+						sqlk.NewQuery("old_cars").Where("price", ">", 100).ForPage(2, 10))
 			},
 			sql:  "WITH `old_cards` AS (SELECT * FROM `all_cars` WHERE `year` < ?)\nINSERT INTO `expensive_cars` (`name`, `model`, `year`) SELECT * FROM `old_cars` WHERE `price` > ? LIMIT ? OFFSET ?",
 			args: []any{2000, 100, 10, int64(10)},
@@ -234,7 +234,7 @@ func TestMysqlDeleteWithJoin(t *testing.T) {
 				return q.From("Posts").
 					Join("Authors", "Authors.Id", "=", "Posts.AuthorId").
 					WhereEq("Authors.Id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  "DELETE `Posts` FROM `Posts` \nINNER JOIN `Authors` ON `Authors`.`Id` = `Posts`.`AuthorId` WHERE `Authors`.`Id` = ?",
 			args: []any{5},
@@ -246,7 +246,7 @@ func TestMysqlDeleteWithJoin(t *testing.T) {
 				return q.From("Posts as P").
 					Join("Authors", "Authors.Id", "=", "P.AuthorId").
 					WhereEq("Authors.Id", 5).
-					Delete()
+					AsDelete()
 			},
 			sql:  "DELETE `P` FROM `Posts` AS `P` \nINNER JOIN `Authors` ON `Authors`.`Id` = `P`.`AuthorId` WHERE `Authors`.`Id` = ?",
 			args: []any{5},
@@ -254,7 +254,7 @@ func TestMysqlDeleteWithJoin(t *testing.T) {
 		{
 			name: "delete without join keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Posts").WhereEq("Id", 7).Delete()
+				return q.From("Posts").WhereEq("Id", 7).AsDelete()
 			},
 			sql:  "DELETE FROM `Posts` WHERE `Id` = ?",
 			args: []any{7},
@@ -304,7 +304,7 @@ func TestMysqlEngineLoopPorts(t *testing.T) {
 		{
 			name: "union with bindings",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Phones").Union(sqlk.NewQuery().From("Laptops").WhereEq("Type", "A"))
+				return q.From("Phones").Union(sqlk.NewQuery("Laptops").WhereEq("Type", "A"))
 			},
 			sql:  "SELECT * FROM `Phones` UNION SELECT * FROM `Laptops` WHERE `Type` = ?",
 			args: []any{"A"},
@@ -385,8 +385,8 @@ func TestMysqlBuildSurface(t *testing.T) {
 			name: "cte precedes and combine follows",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("a").
-					With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).
-					UnionAll(sqlk.NewQuery().From("b"))
+					With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).
+					UnionAll(sqlk.NewQuery("b"))
 			},
 			sql:  "WITH `t` AS (SELECT * FROM `src` WHERE `Ok` = ?)\nSELECT * FROM `a` UNION ALL SELECT * FROM `b`",
 			args: []any{1},
@@ -394,7 +394,7 @@ func TestMysqlBuildSurface(t *testing.T) {
 		{
 			name: "aggregate form",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("A").WhereEq("Active", true).Count()
+				return q.From("A").WhereEq("Active", true).AsCount()
 			},
 			sql:  "SELECT COUNT(*) AS `count` FROM `A` WHERE `Active` = ?",
 			args: []any{true},
@@ -418,7 +418,7 @@ func TestMysqlBuildSurface(t *testing.T) {
 		{
 			name: "update keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Update(sqlk.Record{"Name": "x"})
+				return q.From("Users").WhereEq("Id", 1).AsUpdate(sqlk.Record{"Name": "x"})
 			},
 			sql:  "UPDATE `Users` SET `Name` = ? WHERE `Id` = ?",
 			args: []any{"x", 1},
@@ -455,7 +455,7 @@ func TestMysqlOnConflict(t *testing.T) {
 		{
 			name: "single-row insert with upsert tail",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").Insert(sqlk.Record{"Name": "x", "Age": 18}).
+				return q.From("Users").AsInsert(sqlk.Record{"Name": "x", "Age": 18}).
 					OnConflict("Name", "Age")
 			},
 			sql:  "INSERT IGNORE INTO `Users` (`Age`, `Name`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`), `Age` = VALUES(`Age`)",
@@ -464,7 +464,7 @@ func TestMysqlOnConflict(t *testing.T) {
 		{
 			name: "multi-row insert with upsert tail",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Products").InsertRows([]string{"Name", "Price"},
+				return q.From("Products").AsInsertRows([]string{"Name", "Price"},
 					[]any{"A", 1000},
 					[]any{"B", 2000},
 				).OnConflict("Price")
@@ -475,8 +475,8 @@ func TestMysqlOnConflict(t *testing.T) {
 		{
 			name: "insert from select with upsert tail",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("ActiveUsers").InsertFrom([]string{"Id", "Name"},
-					sqlk.NewQuery().From("Users").WhereEq("Active", 1),
+				return q.From("ActiveUsers").AsInsertFrom([]string{"Id", "Name"},
+					sqlk.NewQuery("Users").WhereEq("Active", 1),
 				).OnConflict("Name")
 			},
 			sql:  "INSERT IGNORE INTO `ActiveUsers` (`Id`, `Name`) SELECT * FROM `Users` WHERE `Active` = ? ON DUPLICATE KEY UPDATE `Name` = VALUES(`Name`)",
@@ -485,7 +485,7 @@ func TestMysqlOnConflict(t *testing.T) {
 		{
 			name: "returnId keeps the upsert tail before the last-id statement",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Books").InsertReturnId(sqlk.Record{"Title": "T"}).OnConflict("Title")
+				return q.From("Books").AsInsertReturnId(sqlk.Record{"Title": "T"}).OnConflict("Title")
 			},
 			sql:  "INSERT IGNORE INTO `Books` (`Title`) VALUES (?) ON DUPLICATE KEY UPDATE `Title` = VALUES(`Title`);SELECT last_insert_id() as Id",
 			args: []any{"T"},
@@ -493,7 +493,7 @@ func TestMysqlOnConflict(t *testing.T) {
 		{
 			name: "mysql-scoped conflict clause is visible to the mysql compiler",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Insert(sqlk.Record{"A": 1}).
+				return q.From("Table").AsInsert(sqlk.Record{"A": 1}).
 					For(sqlk.EngineMysql, func(q *sqlk.Query) *sqlk.Query { return q.OnConflict("A") })
 			},
 			sql:  "INSERT IGNORE INTO `Table` (`A`) VALUES (?) ON DUPLICATE KEY UPDATE `A` = VALUES(`A`)",
@@ -505,7 +505,7 @@ func TestMysqlOnConflict(t *testing.T) {
 			// covers unscoped clauses).
 			name: "postgres-scoped conflict clause is invisible",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").Insert(sqlk.Record{"A": 1}).
+				return q.From("Table").AsInsert(sqlk.Record{"A": 1}).
 					For(sqlk.EnginePostgres, func(q *sqlk.Query) *sqlk.Query { return q.OnConflict("A") })
 			},
 			sql:  "INSERT INTO `Table` (`A`) VALUES (?)",

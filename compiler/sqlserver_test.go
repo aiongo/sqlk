@@ -116,7 +116,7 @@ func TestSqlserverTopBindingOrder(t *testing.T) {
 			// A subquery column's own limit compiles to a nested TOP.
 			name: "nested limit in subquery column",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				nested := sqlk.NewQuery().From("Bar").Limit(1).Select("MyData")
+				nested := sqlk.NewQuery("Bar").Limit(1).Select("MyData")
 				return q.From("Foo as src").Select("MyData").SelectSub(nested, "Bar")
 			},
 			sql:  `SELECT [MyData], (SELECT TOP (?) [MyData] FROM [Bar]) AS [Bar] FROM [Foo] AS [src]`,
@@ -127,7 +127,7 @@ func TestSqlserverTopBindingOrder(t *testing.T) {
 			// prepended to the binding sequence.
 			name: "outer and nested top",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				nested := sqlk.NewQuery().From("Bar").Limit(1).Select("MyData")
+				nested := sqlk.NewQuery("Bar").Limit(1).Select("MyData")
 				return q.From("Foo as src").Limit(1).Select("MyData").SelectSub(nested, "Bar")
 			},
 			sql:  `SELECT TOP (?) [MyData], (SELECT TOP (?) [MyData] FROM [Bar]) AS [Bar] FROM [Foo] AS [src]`,
@@ -146,7 +146,7 @@ func TestSqlserverAggregateSubqueryTop(t *testing.T) {
 			// the pagination).
 			name: "count subquery with limit folds into top",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Outer").SelectSub(sqlk.NewQuery().From("T").Count().Limit(5), "c")
+				return q.From("Outer").SelectSub(sqlk.NewQuery("T").AsCount().Limit(5), "c")
 			},
 			sql:  `SELECT (SELECT TOP (?) COUNT(*) AS [count] FROM [T]) AS [c] FROM [Outer]`,
 			args: []any{5},
@@ -154,7 +154,7 @@ func TestSqlserverAggregateSubqueryTop(t *testing.T) {
 		{
 			name: "single-column aggregate subquery with limit folds into top",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Outer").SelectSub(sqlk.NewQuery().From("T").Sum("Amount").Limit(5), "s")
+				return q.From("Outer").SelectSub(sqlk.NewQuery("T").AsSum("Amount").Limit(5), "s")
 			},
 			sql:  `SELECT (SELECT TOP (?) SUM([Amount]) AS [sum] FROM [T]) AS [s] FROM [Outer]`,
 			args: []any{5},
@@ -213,7 +213,7 @@ func TestSqlserverBooleanLiterals(t *testing.T) {
 			// The omitted SELECT inside EXISTS compiles to the constant 1.
 			name: "true literal with not exists",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Foo").WhereTrue("x").WhereNotExists(sqlk.NewQuery().From("Bar"))
+				return q.From("Foo").WhereTrue("x").WhereNotExists(sqlk.NewQuery("Bar"))
 			},
 			sql: `SELECT * FROM [Foo] WHERE [x] = cast(1 as bit) AND NOT EXISTS (SELECT 1 FROM [Bar])`,
 		},
@@ -278,7 +278,7 @@ func TestSqlserverExists(t *testing.T) {
 			name: "exists with column comparison",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Posts").WhereExists(
-					sqlk.NewQuery().From("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"))
+					sqlk.NewQuery("Comments").WhereColumns("Comments.PostId", "=", "Posts.Id"))
 			},
 			sql: `SELECT * FROM [Posts] WHERE EXISTS (SELECT 1 FROM [Comments] WHERE [Comments].[PostId] = [Posts].[Id])`,
 		},
@@ -288,7 +288,7 @@ func TestSqlserverExists(t *testing.T) {
 			name: "exists with variable in subquery",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("Customers").WhereExists(
-					sqlk.NewQuery().From("Orders").Define("@postal", "8200").
+					sqlk.NewQuery("Orders").Define("@postal", "8200").
 						WhereEq("ShipPostalCode", sqlk.NewVariable("@postal")))
 			},
 			sql:  `SELECT * FROM [Customers] WHERE EXISTS (SELECT 1 FROM [Orders] WHERE [ShipPostalCode] = ?)`,
@@ -343,7 +343,7 @@ func TestSqlserverLastId(t *testing.T) {
 			// A return-id INSERT appends a scope_identity statement.
 			name: "insert return id appends scope_identity",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertReturnId(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsertReturnId(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO [Users] ([Name]) VALUES (?);SELECT scope_identity() as Id`,
 			args: []any{"x"},
@@ -351,7 +351,7 @@ func TestSqlserverLastId(t *testing.T) {
 		{
 			name: "plain insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").Insert(sqlk.Record{"Name": "x"})
+				return q.From("Users").AsInsert(sqlk.Record{"Name": "x"})
 			},
 			sql:  `INSERT INTO [Users] ([Name]) VALUES (?)`,
 			args: []any{"x"},
@@ -359,7 +359,7 @@ func TestSqlserverLastId(t *testing.T) {
 		{
 			name: "multi-row insert does not append",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").InsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
+				return q.From("Users").AsInsertRows([]string{"Name"}, []any{"x"}, []any{"y"})
 			},
 			sql:  `INSERT INTO [Users] ([Name]) VALUES (?), (?)`,
 			args: []any{"x", "y"},
@@ -418,8 +418,8 @@ func TestSqlserverBuildSurface(t *testing.T) {
 			name: "cte precedes and combine follows",
 			build: func(q *sqlk.Query) *sqlk.Query {
 				return q.From("a").
-					With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).
-					UnionAll(sqlk.NewQuery().From("b"))
+					With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).
+					UnionAll(sqlk.NewQuery("b"))
 			},
 			sql:  "WITH [t] AS (SELECT * FROM [src] WHERE [Ok] = ?)\nSELECT * FROM [a] UNION ALL SELECT * FROM [b]",
 			args: []any{1},
@@ -429,7 +429,7 @@ func TestSqlserverBuildSurface(t *testing.T) {
 			// bindings, matching placeholder order.
 			name: "cte bindings precede the top binding",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("t").With("c", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).Limit(2)
+				return q.From("t").With("c", sqlk.NewQuery("src").WhereEq("Ok", 1)).Limit(2)
 			},
 			sql:  "WITH [c] AS (SELECT * FROM [src] WHERE [Ok] = ?)\nSELECT TOP (?) * FROM [t]",
 			args: []any{1, 2},
@@ -437,14 +437,14 @@ func TestSqlserverBuildSurface(t *testing.T) {
 		{
 			// The aggregate rewrite strips pagination, so no TOP appears.
 			name:  "aggregate form",
-			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").WhereEq("Active", true).Count() },
+			build: func(q *sqlk.Query) *sqlk.Query { return q.From("A").WhereEq("Active", true).AsCount() },
 			sql:   `SELECT COUNT(*) AS [count] FROM [A] WHERE [Active] = ?`,
 			args:  []any{true},
 		},
 		{
 			name: "update keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Update(sqlk.Record{"Name": "x"})
+				return q.From("Users").WhereEq("Id", 1).AsUpdate(sqlk.Record{"Name": "x"})
 			},
 			sql:  `UPDATE [Users] SET [Name] = ? WHERE [Id] = ?`,
 			args: []any{"x", 1},
@@ -452,7 +452,7 @@ func TestSqlserverBuildSurface(t *testing.T) {
 		{
 			name: "delete keeps the base shape",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereEq("Id", 1).Delete()
+				return q.From("Users").WhereEq("Id", 1).AsDelete()
 			},
 			sql:  `DELETE FROM [Users] WHERE [Id] = ?`,
 			args: []any{1},
@@ -558,7 +558,7 @@ func TestSqlserverLegacyLimit(t *testing.T) {
 			// The CTE sits outside the wrapper; its bindings come first.
 			name: "cte precedes outside the wrapper",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Table").With("t", sqlk.NewQuery().From("src").WhereEq("Ok", 1)).Offset(20)
+				return q.From("Table").With("t", sqlk.NewQuery("src").WhereEq("Ok", 1)).Offset(20)
 			},
 			sql:  "WITH [t] AS (SELECT * FROM [src] WHERE [Ok] = ?)\nSELECT * FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY (SELECT 0)) AS [row_num] FROM [Table]) AS [results_wrapper] WHERE [row_num] >= ?",
 			args: []any{1, int64(21)},
@@ -567,7 +567,7 @@ func TestSqlserverLegacyLimit(t *testing.T) {
 			// A subquery with its own offset wraps at its own level.
 			name: "subquery offset wraps at its own level",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				return q.From("Users").WhereInSub("Id", sqlk.NewQuery().From("Logs").Offset(3))
+				return q.From("Users").WhereInSub("Id", sqlk.NewQuery("Logs").Offset(3))
 			},
 			sql:  `SELECT * FROM [Users] WHERE [Id] IN (SELECT * FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY (SELECT 0)) AS [row_num] FROM [Logs]) AS [results_wrapper] WHERE [row_num] >= ?)`,
 			args: []any{int64(4)},
@@ -577,8 +577,8 @@ func TestSqlserverLegacyLimit(t *testing.T) {
 			// outer query (no pagination) is not wrapped.
 			name: "union member with pagination wraps at its own level",
 			build: func(q *sqlk.Query) *sqlk.Query {
-				laptops := sqlk.NewQuery().From("Laptops").Where("Price", ">", 1000)
-				tablets := sqlk.NewQuery().From("Tablets").Where("Price", ">", 2000).ForPage(2)
+				laptops := sqlk.NewQuery("Laptops").Where("Price", ">", 1000)
+				tablets := sqlk.NewQuery("Tablets").Where("Price", ">", 2000).ForPage(2)
 				return q.From("Phones").Where("Price", "<", 3000).Union(laptops).UnionAll(tablets)
 			},
 			sql:  `SELECT * FROM [Phones] WHERE [Price] < ? UNION SELECT * FROM [Laptops] WHERE [Price] > ? UNION ALL SELECT * FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY (SELECT 0)) AS [row_num] FROM [Tablets] WHERE [Price] > ?) AS [results_wrapper] WHERE [row_num] BETWEEN ? AND ?`,
