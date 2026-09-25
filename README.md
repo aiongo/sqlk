@@ -76,10 +76,12 @@ posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     OrderByDesc("Date").
     Limit(10))
 
-// writes — Exec and InsertGetId; AsIncrement / AsDecrement are query verbs
-// executed through the same Exec path
+// writes: Exec and InsertGetId
 id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"),
     sqlk.Record{"Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01"})
+
+// numeric adjustments are query verbs, executed through the same Exec path
+_, err = db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", id).AsIncrement("Likes"))
 ```
 
 ```go

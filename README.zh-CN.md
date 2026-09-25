@@ -76,9 +76,12 @@ posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
     OrderByDesc("Date").
     Limit(10))
 
-// 写路径 —— Exec 与 InsertGetId;AsIncrement / AsDecrement 是查询动词,走同一条 Exec 路径
+// 写路径:Exec 与 InsertGetId
 id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"),
     sqlk.Record{"Title": "New Post", "Likes": 0, "Lang": "en", "Date": "2024-02-01"})
+
+// AsIncrement / AsDecrement 是查询动词,走同一条 Exec 路径
+_, err = db.Exec(ctx, sqlk.NewQuery("Posts").WhereEq("Id", id).AsIncrement("Likes"))
 ```
 
 ```go
