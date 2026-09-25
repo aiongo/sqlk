@@ -76,15 +76,21 @@ func (q *QData) WithSelect(columns ...string) *QData {
 	return q
 }
 
-// WithFilter sets the condition tree.
-func (q *QData) WithFilter(filter Filter) *QData {
-	q.Filter = filter
+// WithFilter sets the condition tree; the filter is stored by value
+// (dereferenced), so later mutation of the caller's builder cannot alias it.
+func (q *QData) WithFilter(filter *Filter) *QData {
+	q.Filter = *filter
 	return q
 }
 
-// WithOrderBy sets the sort entries.
-func (q *QData) WithOrderBy(orderBys ...OrderBy) *QData {
-	q.OrderBy = orderBys
+// WithOrderBy sets the sort entries; each entry is stored by value
+// (dereferenced), so later mutation of the caller's builders cannot alias
+// them. Zero arguments reset the sort to none.
+func (q *QData) WithOrderBy(orderBys ...*OrderBy) *QData {
+	q.OrderBy = nil
+	for _, ob := range orderBys {
+		q.OrderBy = append(q.OrderBy, *ob)
+	}
 	return q
 }
 

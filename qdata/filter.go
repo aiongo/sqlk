@@ -60,15 +60,17 @@ func (f *Filter) WithGroupOp(op string) *Filter {
 	return f
 }
 
-// WithRule appends a rule.
-func (f *Filter) WithRule(rule Rule) *Filter {
-	f.Rules = append(f.Rules, rule)
+// WithRule appends a rule; the rule is stored by value (dereferenced), so
+// later mutation of the caller's builder cannot alias it.
+func (f *Filter) WithRule(rule *Rule) *Filter {
+	f.Rules = append(f.Rules, *rule)
 	return f
 }
 
-// WithGroup appends a subgroup.
-func (f *Filter) WithGroup(group Filter) *Filter {
-	f.Groups = append(f.Groups, group)
+// WithGroup appends a subgroup; the group is stored by value (dereferenced),
+// so later mutation of the caller's builder cannot alias it.
+func (f *Filter) WithGroup(group *Filter) *Filter {
+	f.Groups = append(f.Groups, *group)
 	return f
 }
 

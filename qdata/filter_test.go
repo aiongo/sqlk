@@ -22,7 +22,7 @@ func TestValidateRules(t *testing.T) {
 			OpBw, OpBn, OpEw, OpEn, OpCn, OpNc,
 		} {
 			q := New().WithFrom("Users").WithFilter(
-				*NewFilter().WithRule(*NewRule("F", op, "v")),
+				NewFilter().WithRule(NewRule("F", op, "v")),
 			)
 			if err := q.Validate(); err != nil {
 				t.Errorf("Validate() with op %q error = %v, want nil", op, err)
@@ -32,16 +32,16 @@ func TestValidateRules(t *testing.T) {
 
 	t.Run("is and ns no longer rejected unlike legacy implementation", func(t *testing.T) {
 		// is and ns are valid operator codes and must not be rejected.
-		q := New().WithFrom("Users").WithFilter(*NewFilter().
-			WithRule(*NewRule("A", OpIs, nil)).WithRule(*NewRule("B", OpNs, nil)))
+		q := New().WithFrom("Users").WithFilter(NewFilter().
+			WithRule(NewRule("A", OpIs, nil)).WithRule(NewRule("B", OpNs, nil)))
 		if err := q.Validate(); err != nil {
 			t.Errorf("Validate() error = %v, want nil", err)
 		}
 	})
 
 	t.Run("empty field and invalid op rejected", func(t *testing.T) {
-		q := New().WithFrom("Users").WithFilter(*NewFilter().
-			WithRule(*NewRule("", OpEq, "v")).WithRule(*NewRule("F", "eq1", "v")))
+		q := New().WithFrom("Users").WithFilter(NewFilter().
+			WithRule(NewRule("", OpEq, "v")).WithRule(NewRule("F", "eq1", "v")))
 		err := q.Validate()
 		if err == nil {
 			t.Fatal("Validate() error = nil, want problems")
@@ -62,16 +62,16 @@ func TestValidateRules(t *testing.T) {
 	})
 
 	t.Run("empty op rejected as invalid op", func(t *testing.T) {
-		q := New().WithFrom("Users").WithFilter(*NewFilter().
-			WithRule(Rule{Field: "F", Data: "v"}))
+		q := New().WithFrom("Users").WithFilter(NewFilter().
+			WithRule(&Rule{Field: "F", Data: "v"}))
 		if err := q.Validate(); !errors.Is(err, ErrInvalidOp) {
 			t.Errorf("Validate() error = %v, want ErrInvalidOp", err)
 		}
 	})
 
 	t.Run("empty data rules still participate in validation", func(t *testing.T) {
-		q := New().WithFrom("Users").WithFilter(*NewFilter().
-			WithRule(*NewRule("", OpEq, "")).WithRule(*NewRule("F", "eq1", nil)))
+		q := New().WithFrom("Users").WithFilter(NewFilter().
+			WithRule(NewRule("", OpEq, "")).WithRule(NewRule("F", "eq1", nil)))
 		err := q.Validate()
 		if !errors.Is(err, ErrRuleFieldRequired) {
 			t.Errorf("errors.Is(err, ErrRuleFieldRequired) = false, want true")
@@ -82,8 +82,8 @@ func TestValidateRules(t *testing.T) {
 	})
 
 	t.Run("rules in nested groups validated", func(t *testing.T) {
-		q := New().WithFrom("Users").WithFilter(*NewFilter().WithGroup(
-			Filter{GroupOp: GroupOpOr, Rules: []Rule{{Field: "F", Op: "bad"}}},
+		q := New().WithFrom("Users").WithFilter(NewFilter().WithGroup(
+			&Filter{GroupOp: GroupOpOr, Rules: []Rule{{Field: "F", Op: "bad"}}},
 		))
 		if err := q.Validate(); !errors.Is(err, ErrInvalidOp) {
 			t.Errorf("Validate() error = %v, want ErrInvalidOp", err)
@@ -428,7 +428,7 @@ func TestFilterProgrammaticData(t *testing.T) {
 	// pinned here.
 	t.Run("in with typed string slice data", func(t *testing.T) {
 		q := New().WithFrom("Users").
-			WithFilter(*NewFilter().WithRule(*NewRule("S", OpIn, []string{"a", "b"})))
+			WithFilter(NewFilter().WithRule(NewRule("S", OpIn, []string{"a", "b"})))
 		res := mustCompile(t, compiler.New(), mustToQuery(t, q))
 		if res.SQL != `SELECT * FROM "Users" WHERE "S" IN (?, ?)` {
 			t.Errorf("SQL = %q, want %q", res.SQL, `SELECT * FROM "Users" WHERE "S" IN (?, ?)`)
@@ -440,7 +440,7 @@ func TestFilterProgrammaticData(t *testing.T) {
 
 	t.Run("in with empty typed slice data skipped", func(t *testing.T) {
 		q := New().WithFrom("Users").
-			WithFilter(*NewFilter().WithRule(*NewRule("S", OpIn, []int{})))
+			WithFilter(NewFilter().WithRule(NewRule("S", OpIn, []int{})))
 		res := mustCompile(t, compiler.New(), mustToQuery(t, q))
 		if res.SQL != `SELECT * FROM "Users"` {
 			t.Errorf("SQL = %q, want %q", res.SQL, `SELECT * FROM "Users"`)

@@ -109,10 +109,10 @@ func TestQDataProgrammatic(t *testing.T) {
 	q := qdata.New().
 		WithFrom("Posts").
 		WithSelect("Id", "Title").
-		WithFilter(*qdata.NewFilter().
-			WithRule(*qdata.NewRule("Status", qdata.OpEq, "active")).
-			WithRule(*qdata.NewRule("Score", qdata.OpGt, 10))).
-		WithOrderBy(*qdata.NewOrderBy("CreatedAt", "desc")).
+		WithFilter(qdata.NewFilter().
+			WithRule(qdata.NewRule("Status", qdata.OpEq, "active")).
+			WithRule(qdata.NewRule("Score", qdata.OpGt, 10))).
+		WithOrderBy(qdata.NewOrderBy("CreatedAt", "desc")).
 		WithTop(20).
 		WithCount(false)
 	query, err := q.ToQuery()

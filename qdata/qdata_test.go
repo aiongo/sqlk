@@ -113,10 +113,10 @@ func problemCount(t *testing.T, err error) int {
 func TestValidateAggregates(t *testing.T) {
 	t.Run("valid defaults pass", func(t *testing.T) {
 		q := New().WithFrom("Users").
-			WithFilter(*NewFilter().WithGroup(Filter{}).WithGroup(Filter{GroupOp: "or"}).WithGroup(
-				Filter{GroupOp: "and", Groups: []Filter{{}}},
+			WithFilter(NewFilter().WithGroup(&Filter{}).WithGroup(&Filter{GroupOp: "or"}).WithGroup(
+				&Filter{GroupOp: "and", Groups: []Filter{{}}},
 			)).
-			WithOrderBy(*NewOrderBy("Name", ""), OrderBy{By: "Age", Xsc: "asc"}, OrderBy{By: "Id", Xsc: "desc"})
+			WithOrderBy(NewOrderBy("Name", ""), &OrderBy{By: "Age", Xsc: "asc"}, &OrderBy{By: "Id", Xsc: "desc"})
 		if err := q.Validate(); err != nil {
 			t.Errorf("Validate() error = %v, want nil", err)
 		}
@@ -132,8 +132,8 @@ func TestValidateAggregates(t *testing.T) {
 
 	t.Run("aggregates all problems at once", func(t *testing.T) {
 		q := New().WithFrom().
-			WithOrderBy(OrderBy{By: "Name", Xsc: "up"}, OrderBy{By: ""}).
-			WithFilter(Filter{GroupOp: "and", Groups: []Filter{{GroupOp: "xor"}}}).
+			WithOrderBy(&OrderBy{By: "Name", Xsc: "up"}, &OrderBy{By: ""}).
+			WithFilter(&Filter{GroupOp: "and", Groups: []Filter{{GroupOp: "xor"}}}).
 			WithTop(-1).WithSkip(-2)
 		err := q.Validate()
 		if err == nil {
@@ -518,8 +518,8 @@ func TestProgrammaticBuildCompiles(t *testing.T) {
 		q := New().
 			WithFrom("Users").
 			WithSelect("Id", "Name").
-			WithOrderBy(*NewOrderBy("Name", OrderByDesc)).
-			WithFilter(*NewFilter().WithGroupOp(GroupOpAnd).WithRule(*NewRule("Age", "gt", 18))).
+			WithOrderBy(NewOrderBy("Name", OrderByDesc)).
+			WithFilter(NewFilter().WithGroupOp(GroupOpAnd).WithRule(NewRule("Age", "gt", 18))).
 			WithTop(5).WithSkip(10)
 		res := mustCompile(t, compiler.New(), mustToQuery(t, q))
 		want := `SELECT "Id", "Name" FROM "Users" WHERE "Age" > ? ORDER BY Name DESC LIMIT ? OFFSET ?`
