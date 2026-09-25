@@ -29,7 +29,7 @@ SELECT [Id], (SELECT COUNT(*) AS [count] FROM [Comments] WHERE [Comments].[PostI
 `AsCount` / `AsSum` / `AsAvg` / `AsMin` / `AsMax` rewrite the query into an aggregate form; `SelectSub` embeds such a query (or any query) as a projection column with an alias.
 
 ## Raw
-Your friend when you need the full freedom
+Your friend when you need full freedom
 
 ```go
 sqlk.NewQuery("Posts").Select("Id").SelectRaw("count(1) over(partition by AuthorId) as PostsByAuthor")
@@ -40,14 +40,14 @@ SELECT [Id], count(1) over(partition by AuthorId) as PostsByAuthor FROM [Posts]
 ```
 
 ## Identify columns and tables inside Raw
-You can wrap your identifier inside `[` and `]` so they get recognized by sqlk as an identifier, so we can rewrite the same example above as
+Wrap your identifier in `[` and `]` so sqlk recognizes it as an identifier; the same example can be rewritten as
 
 
 ```go
 sqlk.NewQuery("Posts").Select("Id").SelectRaw("count(1) over(partition by [AuthorId]) as [PostsByAuthor]")
 ```
 
-Now `AuthorId` and `PostsByAuthor` get wrapped with the compiler identifiers, this is helpful especially for case sensitive engines like PostgreSql.
+Now `AuthorId` and `PostsByAuthor` get wrapped with the compiler identifiers, which helps especially on case-sensitive engines like PostgreSql.
 
 In Sql Server
 

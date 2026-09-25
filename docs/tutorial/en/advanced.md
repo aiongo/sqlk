@@ -2,7 +2,7 @@
 
 ## Conditional Statements
 
-Sometimes you need to do some actions only when certain conditions are met. In these cases you can use the `When(condition, fn)` verb; the inverse branch is `WhenNot`.
+Sometimes parts of the query should only be built when a condition holds. Use the `When(condition, fn)` verb for that; `WhenNot` is the inverse branch.
 
 ```go
 query := sqlk.NewQuery("Transactions")
@@ -97,7 +97,7 @@ query := sqlk.NewQuery().
     })
 ```
 
-Although it's quite complicated, don't worry — just focus on the concept for now.
+The example is quite complicated; just focus on the concept for now.
 
 The following will output:
 

@@ -12,7 +12,7 @@ All of them take `context.Context` as their first argument, so timeouts and canc
 
 ## Retrieving Records
 
-`Get[T]` executes the query and scans all rows into a slice of your type. The type is yours — no dynamic rows; map columns with the usual sqlx `db` tags.
+`Get[T]` executes the query and scans all rows into a slice of your type. The type is yours; there are no dynamic rows. Map columns with the usual sqlx `db` tags.
 
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
@@ -37,7 +37,7 @@ post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 
 > **Note:** `First` and `FirstOrDefault` add the `Limit(1)` clause implicitly to the query, so there is no need to add it by yourself.
 
-When no row matches, `First` returns a distinguishable error — it is `sql.ErrNoRows`, also exposed as `exec.ErrNoRows`:
+When no row matches, `First` returns a distinguishable error, `sql.ErrNoRows` (also exposed as `exec.ErrNoRows`):
 
 ```go
 _, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
@@ -70,7 +70,7 @@ page2, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2, 2)
 // len(page2.List) == 1, page2.HasMore() == false
 ```
 
-`HasMore` reports whether more data follows the current page (SqlKata's `HasNext`); fetching the next page is simply another `Paginate` call — the result carries no execution-time cursors. SqlKata's `Next` / `Previous` / `NextQuery` cursor members are deliberately not ported: re-paginate with new parameters (or add constraints to a fresh query) instead.
+`HasMore` reports whether more data follows the current page (SqlKata's `HasNext`); fetching the next page is simply another `Paginate` call; the result carries no execution-time cursors. SqlKata's `Next` / `Previous` / `NextQuery` cursor members are deliberately not ported: re-paginate with new parameters (or add constraints to a fresh query) instead.
 
 ## Data Chunks
 
@@ -102,7 +102,7 @@ sum, err := db.Sum[int64](ctx, sqlk.NewQuery("Posts"), "Likes") // 75
 
 ## Execute Raw Statements
 
-For free-form statements keep using your sqlx handle directly — the execution layer deliberately does not duplicate it:
+For free-form statements keep using your sqlx handle directly; the execution layer deliberately does not duplicate it:
 
 ```go
 var users []User

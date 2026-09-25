@@ -1,6 +1,6 @@
 # Compilers
 
-Compilers are the component responsible for transforming a `Query` instance into a SQL string that can be executed directly by the database engine.
+Compilers turn a `Query` instance into a SQL string the database engine can execute directly.
 
 ## Supported compilers
 
@@ -15,7 +15,7 @@ sqlk supports natively the following dialects, one constructor each:
 | SQLite | `compiler.NewSqlite()` | `"Name"` | `sqlite` |
 | Base | `compiler.New()` | `"Name"` | — |
 
-## Some noticeable differences
+## Notable differences
 
 Theoretically the output of the different compilers should be similar; this is true for about 80% of the cases. However in some edge cases the output can be very different. For instance, take a look at how the `Limit` and `Offset` clause get compiled by each compiler
 

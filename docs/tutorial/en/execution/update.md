@@ -2,8 +2,8 @@
 
 The execution layer provides the following methods to help with writing against your database:
 
-- `Exec()` — insert / update / delete built with the root package's write verbs, returns affected rows
-- `InsertGetId[T]()` — insert and return the generated id
+- `Exec()`: insert / update / delete built with the root package's write verbs, returns affected rows
+- `InsertGetId[T]()`: insert and return the generated id
 
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
@@ -21,7 +21,7 @@ affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsert(sqlk.Record{
 
 ## Insert One Record and Get the Inserted Id
 
-`InsertGetId` builds the returnId form of the insert on a copy of the query, executes it, and scans the id in a single round trip (the trailing LastId statement is dialect specific — `scope_identity()` on Sql Server, `lastval()` on PostgreSql, `last_insert_rowid()` on SQLite):
+`InsertGetId` builds the returnId form of the insert on a copy of the query, executes it, and scans the id in a single round trip (the trailing LastId statement is dialect specific: `scope_identity()` on Sql Server, `lastval()` on PostgreSql, `last_insert_rowid()` on SQLite):
 
 ```go
 id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"), sqlk.Record{

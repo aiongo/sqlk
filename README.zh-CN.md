@@ -7,7 +7,7 @@
 
 [English](README.md) | **简体中文**
 
-sqlk 提供单一 fluent `Query` 类型承载全部动词(select / insert / update / delete)、按方言把查询编译为参数化 SQL 的编译器、基于 [sqlx](https://github.com/jmoiron/sqlx) 的轻量执行层,以及面向不可信调用方的 JSON 查询线协议,全部在同一套风格下协同:
+sqlk 提供单一 fluent `Query` 类型承载全部动词(select / insert / update / delete)、按方言把查询编译为参数化 SQL 的编译器、基于 [sqlx](https://github.com/jmoiron/sqlx) 的轻量执行层,以及面向不可信调用方的 JSON 查询线协议:
 
 ```go
 posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").

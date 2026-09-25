@@ -7,7 +7,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-sqlk gives you one fluent `Query` type that carries every verb (select / insert / update / delete), a compiler that turns it into parameterized SQL for five dialects, a lightweight execution layer on top of [sqlx](https://github.com/jmoiron/sqlx), and a JSON query wire protocol for untrusted callers, all in one style:
+sqlk gives you one fluent `Query` type that carries every verb (select / insert / update / delete), a compiler that turns it into parameterized SQL for five dialects, a lightweight execution layer on top of [sqlx](https://github.com/jmoiron/sqlx), and a JSON query wire protocol for untrusted callers:
 
 ```go
 posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").
@@ -26,7 +26,7 @@ Every value binds as a parameter; there is no string concatenation and no SQL in
 go get github.com/aiongo/sqlk
 ```
 
-The library itself depends only on `database/sql` and [sqlx](https://github.com/jmoiron/sqlx). It binds itself to no database driver; your application registers the driver it needs (the project's tests use `modernc.org/sqlite`).
+The library itself depends only on `database/sql` and [sqlx](https://github.com/jmoiron/sqlx). It does not bind any database driver; your application registers the driver it needs (the project's tests use `modernc.org/sqlite`).
 
 ## Build and compile without a connection
 
@@ -137,7 +137,7 @@ go test ./...
 
 - [SqlKata](https://github.com/sqlkata/querybuilder) (MIT): the C# query builder this project is inspired by and ports to Go. Its capability surface, fluent style, and per-dialect compilation semantics are the baseline sqlk follows.
 - [goqu](https://github.com/doug-martin/goqu) (MIT): a long-standing Go SQL builder. sqlk deliberately keeps SqlKata's fluent single-query style rather than goqu's separate-dataset style, but goqu's dialect-assertion tests informed this project's test suite.
-- [go-sqlbuilder](https://github.com/huandu/go-sqlbuilder) (MIT): a Go SQL builder covering many flavors. Its test scenarios are migrated to `test/go-sqlbuilder` for the five dialects sqlk supports — a cross-check beyond the SqlKata baseline.
+- [go-sqlbuilder](https://github.com/huandu/go-sqlbuilder) (MIT): a Go SQL builder covering many flavors. Its test scenarios are migrated to `test/go-sqlbuilder` for the five dialects sqlk supports, a cross-check beyond the SqlKata baseline.
 - [sqlx](https://github.com/jmoiron/sqlx) (MIT): the execution layer's foundation.
 
 ## License

@@ -1,8 +1,6 @@
 # Date Operations
 
-sqlk provides `WhereDate`, `WhereTime` and `WhereDatePart` methods to deal with date columns.
-
-This is useful if you want to query against a specific date part of the column.
+sqlk provides `WhereDate`, `WhereTime` and `WhereDatePart` methods to query against a specific part of a date column.
 
 ## WhereDate
 lets you query against the **date part** of a datetime column (`WhereDateEq` is the equality shorthand; `WhereDate` takes an explicit operator).
@@ -52,7 +50,7 @@ SELECT * FROM `Posts` WHERE TIME(`CreatedAt`) > ?
 ```
 
 ## WhereDatePart
-**WhereDatePart** accepts a `datePart` argument to specify the part you want to query against, the available options are: **date**, **time**, **year**, **month**, **day**, **hour** and **minute** (`WhereDatePartEq` is the equality shorthand).
+`WhereDatePart` accepts a `datePart` argument to specify the part you want to query against; the available options are `date`, `time`, `year`, `month`, `day`, `hour` and `minute` (`WhereDatePartEq` is the equality shorthand).
 
 For example to get the posts created in the first of February.
 

@@ -76,7 +76,7 @@ INSERT INTO [ActiveUsers] ([Id], [Name], [Address]) SELECT * FROM [Users] WHERE 
 args: `[1]`
 
 ### On Conflict (Upsert)
-`OnConflict` marks the INSERT as an upsert: on a unique-key conflict the named columns are updated with the values of the row being inserted. It applies to every insert form (single row, multiple rows, insert from select); currently only the MySQL dialect supports it — other dialects reject the clause at compile time.
+`OnConflict` marks the INSERT as an upsert: on a unique-key conflict the named columns are updated with the values of the row being inserted. It applies to every insert form (single row, multiple rows, insert from select); currently only the MySQL dialect supports it, and other dialects reject the clause at compile time.
 
 ```go
 query := sqlk.NewQuery("Products").AsInsertRows([]string{"Name", "Price"},

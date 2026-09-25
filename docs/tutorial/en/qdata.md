@@ -30,12 +30,12 @@ The keys `select` / `filter` / `orderby` / `top` / `skip` / `count` take their n
 }
 ```
 
-- `from` — the target list; the first element is the main table, every further element adds a convention INNER JOIN (see [Convention joins](#convention-joins)). Required: an empty list (or an empty element) is rejected.
-- `select` — projection columns; items containing `(` are treated as raw SQL expressions, everything else as identifiers. Empty list projects `*`.
-- `filter` — the condition tree; `rules` are column-operator-value triples, `groups` nest to any depth, each level connects with its own `group_op` (`and` / `or`, default `and`).
-- `orderby` — orderings; `by` is compiled as a raw expression, `xsc` is `asc` (default) or `desc`.
-- `top` / `skip` — pagination; there is no default: a missing `top` (or `top: 0`) emits no LIMIT clause, `skip` only takes effect when `top > 0`.
-- `count` — when `true`, produces a COUNT aggregate query instead (WHERE and convention joins are kept; projection / ordering / pagination are not applied).
+- `from`: the target list; the first element is the main table, every further element adds a convention INNER JOIN (see [Convention joins](#convention-joins)). Required: an empty list (or an empty element) is rejected.
+- `select`: projection columns; items containing `(` are treated as raw SQL expressions, everything else as identifiers. Empty list projects `*`.
+- `filter`: the condition tree; `rules` are column-operator-value triples, `groups` nest to any depth, each level connects with its own `group_op` (`and` / `or`, default `and`).
+- `orderby`: orderings; `by` is compiled as a raw expression, `xsc` is `asc` (default) or `desc`.
+- `top` / `skip`: pagination; there is no default: a missing `top` (or `top: 0`) emits no LIMIT clause, `skip` only takes effect when `top > 0`.
+- `count`: when `true`, produces a COUNT aggregate query instead (WHERE and convention joins are kept; projection / ordering / pagination are not applied).
 
 ## Unmarshal, validate, convert, compile
 
@@ -75,7 +75,7 @@ With no `filter` / `orderby` / `top` keys at all, `{"from": ["Posts"]}` compiles
 SELECT * FROM "Posts"
 ```
 
-no args. Nothing limits the result unless you ask for it.
+no args; nothing limits the result unless you ask for it.
 
 ## Convention joins
 

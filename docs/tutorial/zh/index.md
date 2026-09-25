@@ -10,7 +10,7 @@
 
 ## 介绍
 
-一个优雅的查询构建器与执行器,帮你以可预期的方式处理 SQL 查询。
+一个查询构建器与执行器,帮你以可预期的方式处理 SQL 查询。
 
 sqlk 是 [SqlKata](https://github.com/sqlkata/querybuilder) 的 Go 移植:单一 fluent 的 `Query` 类型承载全部动词(select / insert / update / delete),编译器按五种方言把它编译为参数化 SQL。英文版教程见 [`docs/tutorial/en/`](../en/index.md)。
 

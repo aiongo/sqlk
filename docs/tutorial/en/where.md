@@ -1,11 +1,11 @@
 # Where
-sqlk offers many useful methods to make it easy writing `Where` conditions.
+sqlk offers many methods that make `Where` conditions easy to write.
 
 All these methods come in `Or` and `Not` variants: `OrWhereNull` connects the condition with a boolean `OR`, and `WhereNotNull` / `OrWhereNotNull` negate the condition. Since Go has no optional or default parameters, the C# overload shorthands become named variants (`WhereEq` is `Where` with the `=` operator).
 
 ## Basic Where
 
-The `WhereEq` verb is the shorthand for the equality operator, so these two statements are totally the same.
+The `WhereEq` verb is the shorthand for the equality operator, so these two statements are exactly equivalent.
 
 ```go
 sqlk.NewQuery("Posts").WhereEq("Id", 10)
@@ -30,7 +30,7 @@ SELECT * FROM [Posts] WHERE [IsPublished] = cast(0 as bit) AND [Score] > ?
 
 args: `[10]`
 
-> **Note:** The same applies to `WhereNot`, `OrWhere` and `OrWhereNot`. Operators are validated against a whitelist at compile time — see [Compilers](compilers.md).
+> **Note:** The same applies to `WhereNot`, `OrWhere` and `OrWhereNot`. Operators are validated against a whitelist at compile time; see [Compilers](compilers.md).
 
 ## Multiple fields
 If you want to filter your query against multiple fields, pass a map that represents col/values. Columns are emitted in sorted order so the compiled output is deterministic (Go map iteration order is undefined; under AND the order does not change the semantics).
@@ -123,7 +123,7 @@ SELECT * FROM [Posts] WHERE [Score] BETWEEN ? AND ?
 
 args: `[10, 20]`
 
-`WhereNotBetween` negates the interval, the `Or…` variants connect with OR.
+`WhereNotBetween` negates the interval; the `Or…` variants connect with OR.
 
 ## Where In
 Pass values as a variadic list to apply the SQL `WHERE IN` condition.
@@ -174,10 +174,10 @@ In PostgreSql
 SELECT * FROM "Posts" WHERE EXISTS (SELECT 1 FROM "Comments" WHERE "Comments"."PostId" = "Posts"."Id")
 ```
 
-sqlk optimizes the `EXISTS` query by disregarding the selected columns and projecting the constant `1` in order to provide a consistent behavior across all database engines.
+sqlk optimizes the `EXISTS` query by disregarding the selected columns and projecting the constant `1`, so the behavior is consistent across all database engines.
 
 ## Where Raw
-The `WhereRaw` verb allows you to write anything not supported by the methods above, so it will give you the maximum flexibility.
+The `WhereRaw` verb lets you write anything the methods above don't cover.
 
 
 ```go
@@ -190,7 +190,7 @@ SELECT * FROM [Posts] WHERE lower(Title) = ?
 
 args: `["sql"]`
 
-Sometimes it's useful to wrap your table/columns by the engine identifier, this is helpful when the database is case sensitive like in PostgreSql, to do so just wrap your string with `[` and `]` and sqlk will put the correspondent identifiers.
+Sometimes it's useful to wrap your tables/columns with the engine identifier, which helps when the database is case sensitive like PostgreSql. To do so just wrap your string with `[` and `]` and sqlk will put the correspondent identifiers.
 
 ```go
 sqlk.NewQuery("Posts").WhereRaw("lower([Title]) = ?", "sql")

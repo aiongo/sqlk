@@ -23,7 +23,7 @@ db := exec.New(sqlxDB, compiler.NewMysql())
 users, err := db.Get[User](ctx, sqlk.NewQuery("Users").Limit(10))
 ```
 
-Queries are built with the root package's `sqlk.NewQuery()` exactly as in the builder chapters — building and execution are strictly separated, there is no executable-query subclass.
+Queries are built with the root package's `sqlk.NewQuery()` exactly as in the builder chapters; building and execution are strictly separated, and there is no executable-query subclass.
 
 ## Transactions
 
@@ -62,7 +62,7 @@ If you manage transactions yourself (e.g. with specific isolation options), open
 
 ## Wiring into your dependency container
 
-There is nothing framework-specific to register: `exec.New` is a plain constructor. Register the resulting `*exec.DB` as a singleton — it is safe for concurrent use — and hand it the compiler of your database.
+There is nothing framework-specific to register: `exec.New` is a plain constructor. Register the resulting `*exec.DB` as a singleton (it is safe for concurrent use) and hand it the compiler of your database.
 
 ```go
 func NewDB() (*exec.DB, func(), error) {

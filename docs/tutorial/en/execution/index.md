@@ -1,10 +1,10 @@
 # Query Execution
 
-The `exec` package provides an easy way to execute your queries on top of [sqlx](https://github.com/jmoiron/sqlx): scanning into structs (generically), pagination, chunked iteration and write verbs, with `context.Context` throughout.
+The `exec` package executes your queries on top of [sqlx](https://github.com/jmoiron/sqlx): scanning into structs (generically), pagination, chunked iteration and write verbs, with `context.Context` throughout.
 
 ## Installing Database Providers
 
-The library does not bind any database driver — register the one your application needs and hand the resulting `*sql.DB` to sqlx.
+The library does not bind any database driver; register the one your application needs and hand the resulting `*sql.DB` to sqlx.
 
 ### Sql Server
 

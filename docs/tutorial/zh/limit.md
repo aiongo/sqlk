@@ -1,6 +1,6 @@
 # Limit 与 Offset
 
-`Limit` 与 `Offset` 限制数据库返回的结果数量,与 `OrderBy` / `OrderByDesc` 高度相关。
+`Limit` 与 `Offset` 限制数据库返回的结果数量,通常与 `OrderBy` / `OrderByDesc` 配合使用。
 
 ```go
 // 最新的文章
@@ -95,7 +95,7 @@ SELECT * FROM "Posts" ORDER BY "Date" DESC LIMIT ? OFFSET ?
 args: `[50, 100]`
 
 ## Skip 与 Take
-如果你来自 `Linq` 背景,这是个彩蛋。`Skip` 与 `Take` 分别是 `Offset` 与 `Limit` 的别名,请享受 :)
+如果你来自 `Linq` 背景,这是个彩蛋。`Skip` 与 `Take` 分别是 `Offset` 与 `Limit` 的别名,尽情使用 :)
 
 ```go
 query := sqlk.NewQuery("Posts").OrderByDesc("Date").Take(10).Skip(5)

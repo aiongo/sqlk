@@ -10,13 +10,13 @@
 
 ## Introduction
 
-An elegant Query Builder and Executor that helps you deal with SQL queries in a predictable way.
+A query builder and executor that helps you deal with SQL queries in a predictable way.
 
 sqlk is a Go port of [SqlKata](https://github.com/sqlkata/querybuilder): one fluent `Query` type carries every verb (select / insert / update / delete), and a compiler turns it into parameterized SQL for five dialects. The Chinese edition of this tutorial lives in [`docs/tutorial/zh/`](../zh/index.md).
 
 It uses parameter binding to protect your application against SQL injection attacks. There is no need to clean strings being passed as bindings.
 
-In addition to protection against SQL injection attacks, this technique speeds up your query execution by letting the SQL engine cache and reuse the same query plan even if the parameters are changed.
+Parameter binding also speeds up execution: the engine can cache and reuse the same query plan even when the parameters change.
 
 ```go
 posts, err := db.Get[Post](ctx, sqlk.NewQuery("Posts").

@@ -2,8 +2,8 @@
 
 执行层提供以下方法帮助对数据库做写操作:
 
-- `Exec()` —— 执行根包写动词(insert / update / delete)构建的查询,返回影响行数
-- `InsertGetId[T]()` —— 写入并取回自增 id
+- `Exec()`:执行根包写动词(insert / update / delete)构建的查询,返回影响行数
+- `InsertGetId[T]()`:写入并取回自增 id
 
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
@@ -21,7 +21,7 @@ affected, err := db.Exec(ctx, sqlk.NewQuery("Books").AsInsert(sqlk.Record{
 
 ## 写入单条并取回 id
 
-`InsertGetId` 在查询副本上构建 returnId 形态的 INSERT,执行并在同一往返取回 id(尾部 LastId 语句按方言——Sql Server 的 `scope_identity()`、PostgreSql 的 `lastval()`、SQLite 的 `last_insert_rowid()`):
+`InsertGetId` 在查询副本上构建 returnId 形态的 INSERT,执行并在同一往返取回 id(尾部 LastId 语句按方言各异:Sql Server 的 `scope_identity()`、PostgreSql 的 `lastval()`、SQLite 的 `last_insert_rowid()`):
 
 ```go
 id, err := db.InsertGetId[int64](ctx, sqlk.NewQuery("Posts"), sqlk.Record{

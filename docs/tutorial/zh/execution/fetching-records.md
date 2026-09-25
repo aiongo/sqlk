@@ -12,7 +12,7 @@
 
 ## 取回记录
 
-`Get[T]` 执行查询并把全部行扫描进你的类型切片。类型由你给定——没有动态行;列映射用 sqlx 惯用的 `db` 标签。
+`Get[T]` 执行查询并把全部行扫描进你的类型切片。类型由你给定,没有动态行;列映射用 sqlx 惯用的 `db` 标签。
 
 ```go
 db := exec.New(sqlxDB, compiler.NewSqlite())
@@ -37,7 +37,7 @@ post, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 1))
 
 > **Note:** `First` 与 `FirstOrDefault` 会隐式给查询附加 `Limit(1)`,无需自己添加。
 
-无匹配行时 `First` 返回可判别的错误——即 `sql.ErrNoRows`,也以 `exec.ErrNoRows` 导出:
+无匹配行时 `First` 返回可判别的错误(`sql.ErrNoRows`,也以 `exec.ErrNoRows` 导出):
 
 ```go
 _, err := db.First[Post](ctx, sqlk.NewQuery("Posts").WhereEq("Id", 99))
@@ -70,7 +70,7 @@ page2, err := db.Paginate[Post](ctx, sqlk.NewQuery("Posts").OrderBy("Id"), 2, 2)
 // len(page2.List) == 1, page2.HasMore() == false
 ```
 
-`HasMore` 报告当前页之后是否还有数据(即 SqlKata 的 `HasNext`);取下一页就是再调一次 `Paginate`——结果值不携带执行期游标。SqlKata 的 `Next` / `Previous` / `NextQuery` 游标成员刻意不移植:以新参数重新分页(或给新查询追加条件)即可。
+`HasMore` 报告当前页之后是否还有数据(即 SqlKata 的 `HasNext`);取下一页就是再调一次 `Paginate`,结果值不携带执行期游标。SqlKata 的 `Next` / `Previous` / `NextQuery` 游标成员刻意不移植:以新参数重新分页(或给新查询追加条件)即可。
 
 ## 数据分块
 
@@ -102,7 +102,7 @@ sum, err := db.Sum[int64](ctx, sqlk.NewQuery("Posts"), "Likes") // 75
 
 ## 执行原生语句
 
-自由格式的语句直接继续使用你的 sqlx 句柄——执行层刻意不重复它:
+自由格式的语句直接继续使用你的 sqlx 句柄,执行层刻意不重复它:
 
 ```go
 var users []User

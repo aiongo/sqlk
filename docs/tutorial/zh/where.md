@@ -30,7 +30,7 @@ SELECT * FROM [Posts] WHERE [IsPublished] = cast(0 as bit) AND [Score] > ?
 
 args: `[10]`
 
-> **Note:** `WhereNot`、`OrWhere`、`OrWhereNot` 同理。操作符在编译期经白名单校验——见[编译器](compilers.md)。
+> **Note:** `WhereNot`、`OrWhere`、`OrWhereNot` 同理。操作符在编译期经白名单校验(见[编译器](compilers.md))。
 
 ## 多字段
 想按多个字段过滤时,传入表达「列/值」的 map。列按字典序输出,保证编译产物确定(Go map 迭代顺序不定;AND 连接下列序不影响语义)。
@@ -177,7 +177,7 @@ SELECT * FROM "Posts" WHERE EXISTS (SELECT 1 FROM "Comments" WHERE "Comments"."P
 sqlk 会省略 `EXISTS` 子查询的投影列、改为常量 `1`,以在所有方言上提供一致行为。
 
 ## Where Raw
-`WhereRaw` 动词允许你写以上方法都不支持的内容,给你最大的灵活性。
+`WhereRaw` 动词让你写以上方法覆盖不到的内容。
 
 
 ```go

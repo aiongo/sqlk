@@ -1,6 +1,6 @@
 # Limit and Offset
 
-`Limit` and `Offset` allow you to limit the number of results returned from the database; these are highly correlated with the `OrderBy` and `OrderByDesc` verbs.
+`Limit` and `Offset` restrict the number of rows the database returns; they pair naturally with the `OrderBy` and `OrderByDesc` verbs.
 
 ```go
 // latest posts
@@ -63,7 +63,7 @@ You can use the `ForPage` verb to easily paginate your data.
 posts := sqlk.NewQuery("Posts").OrderByDesc("Date").ForPage(2)
 ```
 
-By default this method will return `15` rows per page, you can override this value by passing an integer as the 2nd parameter.
+By default this method returns `15` rows per page; pass an integer as the 2nd parameter to override it.
 
 > **Note:** `ForPage` is 1-based so pass 1 for the first page
 

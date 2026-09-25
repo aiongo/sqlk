@@ -23,7 +23,7 @@ db := exec.New(sqlxDB, compiler.NewMysql())
 users, err := db.Get[User](ctx, sqlk.NewQuery("Users").Limit(10))
 ```
 
-查询用根包的 `sqlk.NewQuery()` 构建,与构建器各章完全一致——构建与执行严格分离,没有「可执行查询」子类。
+查询用根包的 `sqlk.NewQuery()` 构建,与构建器各章完全一致;构建与执行严格分离,没有「可执行查询」子类。
 
 ## 事务
 
@@ -62,7 +62,7 @@ cars, err = loadCars(ctx, tx.Executor)  // tx *exec.Tx
 
 ## 接入依赖注入容器
 
-没有框架相关的注册项:`exec.New` 就是普通构造函数。把产出的 `*exec.DB` 注册为单例——它并发安全——并为其配备你数据库的编译器即可。
+没有框架相关的注册项:`exec.New` 就是普通构造函数。把产出的 `*exec.DB` 注册为单例(它并发安全),并为其配备你数据库的编译器即可。
 
 ```go
 func NewDB() (*exec.DB, func(), error) {
