@@ -64,6 +64,10 @@ func New(db *sqlx.DB, c *compiler.Compiler, opts ...Option) *DB {
 	return &DB{Executor: newExecutor(db, c, opts), db: db}
 }
 
+// DB returns the underlying sqlx connection handle, for callers that need the
+// raw escape hatch (DDL, SQL no builder can express) alongside the builder API.
+func (d *DB) DB() *sqlx.DB { return d.db }
+
 // Begin opens a transaction and returns a uniform Tx handle; the compiler
 // and the compile-log callback are inherited from this handle. Callers that
 // must set transaction options first, per database/sql convention, can use
